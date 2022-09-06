@@ -270,7 +270,7 @@ http://example.example/example
     </bean>
     <bean class="org.archive.modules.deciderules.ContentTypeMatchesRegexDecideRule">
      <property name="decision" value="REJECT" />
-     <property name="regex" value="^application\/(pdf|zip|font).*$|^(image|video|binary)\/.*$" />
+     <property name="regex" value="^application/(pdf|zip|font|gzip|x-gzip|binary).*$|^(image|video|audio|binary|font).*$" />
     </bean>
     <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" />
    </list>
@@ -278,7 +278,7 @@ http://example.example/example
  </bean>
  <bean id="fetchHttp" class="org.archive.modules.fetcher.FetchHTTP">
   <!-- <property name="useHTTP11" value="false" /> -->
-  <!-- <property name="maxLengthBytes" value="0" /> -->
+  <property name="maxLengthBytes" value="104857600" /> <!-- 100 MiB -->
   <!-- <property name="timeoutSeconds" value="1200" /> -->
   <!-- <property name="maxFetchKBSec" value="0" /> -->
   <!-- <property name="defaultEncoding" value="ISO-8859-1" /> -->
@@ -372,11 +372,11 @@ http://example.example/example
  <!-- first, processors are declared as top-level named beans  -->
  <bean id="warcWriter" class="org.archive.modules.writer.WARCWriterChainProcessor">
   <!-- <property name="compress" value="true" /> -->
-  <!-- <property name="prefix" value="IAH" /> -->
-  <!-- <property name="maxFileSizeBytes" value="1000000000" /> -->
+  <property name="prefix" value="WEB_only_text" />
+  <property name="maxFileSizeBytes" value="4294967296" /> <!-- 4 GiB -->
   <!-- <property name="poolMaxActive" value="1" /> -->
   <!-- <property name="MaxWaitForIdleMs" value="500" /> -->
-  <!-- <property name="skipIdenticalDigests" value="false" /> -->
+  <property name="skipIdenticalDigests" value="true" />
   <!-- <property name="maxTotalBytesToWrite" value="0" /> -->
   <!-- <property name="directory" value="${launchId}" /> -->
   <!-- <property name="storePaths">
