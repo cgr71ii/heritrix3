@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+DIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 PROFILES_DIR="${DIR}/profiles"
 PROFILE_TARGET="${DIR}/profile-crawler-beans.cxml"
 NEW_PROFILE="./profiles/$1"
