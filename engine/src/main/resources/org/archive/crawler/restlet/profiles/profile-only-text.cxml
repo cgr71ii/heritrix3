@@ -138,7 +138,11 @@ http://example.example/example
     <bean class="org.archive.modules.deciderules.RejectDecideRule" />
     <!-- ...then ACCEPT those within configured/seed-implied SURT prefixes... -->
     <ref bean="acceptSurts" />
-    <!-- ...then ACCEPT those within configured/seed-implied domains -->
+    <!-- ...then ACCEPT those within configured/seed-implied domains
+
+         If this rule is removed and any other is not added, SurtPrefixedDecideRule
+         rule will get all seeds and only crawl inside those authorities
+    -->
 	<bean class="org.archive.modules.deciderules.surt.OnDomainsDecideRule" />
     <!-- ...but REJECT those more than a configured link-hop-count from start... -->
     <bean class="org.archive.modules.deciderules.TooManyHopsDecideRule">
@@ -373,7 +377,7 @@ http://example.example/example
  <bean id="warcWriter" class="org.archive.modules.writer.WARCWriterChainProcessor">
   <!-- <property name="compress" value="true" /> -->
   <property name="prefix" value="WEB_only_text" />
-  <property name="maxFileSizeBytes" value="4294967296" /> <!-- 4 GiB -->
+  <property name="maxFileSizeBytes" value="1073741824" /> <!-- 1 GiB -->
   <!-- <property name="poolMaxActive" value="1" /> -->
   <!-- <property name="MaxWaitForIdleMs" value="500" /> -->
   <property name="skipIdenticalDigests" value="true" />
@@ -652,10 +656,14 @@ http://example.example/example
  -->
  
  <!-- DISK SPACE MONITOR: 
-      Pauses the crawl if disk space at monitored paths falls below minimum threshold -->
+      Pauses the crawl if disk space at monitored paths falls below minimum threshold
+
+      If DSM is triggered, there might be problems with statistics and, if enabled, crawl
+      time limit: https://github.com/internetarchive/heritrix3/issues/499
+ -->
  <!-- 
  <bean id="diskSpaceMonitor" class="org.archive.crawler.monitor.DiskSpaceMonitor">
-   <property name="pauseThresholdMiB" value="500" />
+   <property name="pauseThresholdMiB" value="5000" />
    <property name="monitorConfigPaths" value="true" />
    <property name="monitorPaths">
      <list>
