@@ -7,6 +7,10 @@ NEW_PROFILE="./profiles/$1"
 
 if [[ ! -f "$PROFILE_TARGET" ]]; then
   >&2 echo "WARNING: there is not current profile actived ($PROFILE_TARGET)"
+
+  if [[ ! -e "$PROFILE_TARGET" ]]; then
+    >&2 echo "WARNING: the file does exist, but it is not working as expected for some reason"
+  fi
 fi
 
 ls_profiles()
