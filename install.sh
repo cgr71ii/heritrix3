@@ -2,17 +2,30 @@
 
 DIR="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 HERITRIX_BUILD_LOG_PREFIX="$1"
+HERITRIX_SKIP_TESTS="$2"
 
 if [[ -z "$HERITRIX_BUILD_LOG_PREFIX" ]]; then
-  >&2 echo "Syntax: $(basename $0) <build-log-prefix>"
+  >&2 echo "Syntax: $(basename $0) <build-log-prefix> [<skip-tests>]"
   exit 1
+fi
+
+if [[ ! -z "$HERITRIX_SKIP_TESTS" ]]; then
+  if [[ "$HERITRIX_SKIP_TESTS" == "true" ]]; then
+    HERITRIX_SKIP_TESTS="-DskipTests"
+  elif [[ "$HERITRIX_SKIP_TESTS" == "false" ]]; then
+    HERITRIX_SKIP_TESTS = ""
+  else
+    >&2 echo "skip-tests only allows 'true' and 'false'"
+
+    HERITRIX_SKIP_TESTS=""
+  fi
 fi
 
 pushd "$DIR" > /dev/null
 
 echo "Creating package..."
 
-mvn --settings .github/workflows/m2-settings.xml -B clean package --file pom.xml \
+mvn --settings .github/workflows/m2-settings.xml $HERITRIX_SKIP_TESTS -B clean package --file pom.xml \
   > "${HERITRIX_BUILD_LOG_PREFIX}.out" 2> "${HERITRIX_BUILD_LOG_PREFIX}.err"
 
 HERITRIX_BUILD_STATUS="$?"
