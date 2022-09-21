@@ -27,6 +27,7 @@ import org.archive.spring.KeyedProperties;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
+import org.json.JSONException;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -146,19 +147,34 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                 }
 
                 JSONObject obj = new JSONObject(request_result);
-                JSONArray scores = obj.getJSONArray("ok");
 
-                if (scores.length() != 1) {
-                    if (logger.isLoggable(Level.WARNING)) {
-                        logger.warning(String.format("unexpected length of scores: %d", scores.length()));
+                try {
+                    JSONArray scores = obj.getJSONArray("ok");
+
+                    if (scores.length() != 1) {
+                        if (logger.isLoggable(Level.WARNING)) {
+                            logger.warning(String.format("unexpected length of scores: %d", scores.length()));
+                        }
+
+                        // Set similarity to minimum value
+                        result = 0.0;
+                    } else {
+                        String str_result = scores.getString(0);
+
+                        result = Double.parseDouble(str_result);
                     }
+                } catch (JSONException e) {
+                    try {
+                        String error = obj.getString("null");
 
-                    // Set similarity to minimum value
-                    result = 0.0;
-                } else {
-                    String str_result = scores.getString(0);
-
-                    result = Double.parseDouble(str_result);
+                        if (logger.isLoggable(Level.WARNING)) {
+                            logger.warning("PUC error: " + error + ": " + e.toString());
+                        }
+                    } catch (JSONException e2) {
+                        if (logger.isLoggable(Level.WARNING)) {
+                            logger.warning("JSON exception: " + e2.toString());
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
@@ -183,6 +199,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
         String str_uri = uri.toCustomString();
+        int cost = 10001;
 
         if (via != null) {
             String str_via = via.toCustomString();
@@ -200,7 +217,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             // Metric should be a value in [0, 10000]
             double similarity = requestMetric(str_uri, str_via);
 
-            return 10000 - (int)similarity + 1; // [1, 10001]
+            cost = 10000 - (int)similarity + 1; // [1, 10001]
         }
         else {
             if (logger.isLoggable(Level.FINE)) {
@@ -208,7 +225,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             }
         }
 
-        return 1;
+        return cost;
     }
 
 }
