@@ -63,6 +63,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         setMetricServerUrl("http://localhost:5000/inference");
         setUserAgent(String.format("heritrix: %s", PUCCostAssignmentPolicy.class.getName()));
         setUrlsBase64(true);
+        setLoggerFine(false);
     }
 
     public String getMetricServerUrl() {
@@ -87,6 +88,18 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
     public void setUrlsBase64(Boolean urls_base64) {
         kp.put("urlsBase64",urls_base64);
+    }
+
+    public Boolean getLoggerFine() {
+        return (Boolean) kp.get("loggerFine");
+    }
+
+    public void setLoggerFine(Boolean logger_fine) {
+        if (logger_fine) {
+            logger.setLevel(Level.FINE);
+        }
+
+        kp.put("loggerFine",logger_fine);
     }
 
     private String sendPOST(String params) throws IOException {
@@ -126,8 +139,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         double result = 0.0;
         String request_param = String.format("src_urls=%s&trg_urls=%s", src_url, trg_url);
 
-        if (logger.isLoggable(Level.FINE)) {
-            logger.fine("request param: " + request_param);
+        if (logger.isLoggable(Level.FINER)) {
+            logger.finer("request param: " + request_param);
         }
 
         try {
@@ -142,8 +155,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                 result = 0.0;
             }
             else {
-                if (logger.isLoggable(Level.INFO)) {
-                    logger.info("request result: " + request_result);
+                if (logger.isLoggable(Level.FINER)) {
+                    logger.finer("request result: " + request_result);
                 }
 
                 JSONObject obj = new JSONObject(request_result);
@@ -209,19 +222,18 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                 str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
             }
 
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("uri: %s", str_uri));
-                logger.fine(String.format("via: %s", str_via));
-            }
-
             // Metric should be a value in [0, 10000]
             double similarity = requestMetric(str_uri, str_via);
 
             cost = 10000 - (int)similarity + 1; // [1, 10001]
+
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+            }
         }
         else {
             if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("via is null. uri: %s", str_uri));
+                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
             }
         }
 
