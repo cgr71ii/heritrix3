@@ -24,6 +24,9 @@ import org.archive.modules.CrawlURI;
 
 import org.archive.spring.HasKeyedProperties;
 import org.archive.spring.KeyedProperties;
+import org.archive.spring.ConfigPath;
+
+import org.archive.io.GenerationFileHandler;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -43,15 +46,17 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * A CostAssignment policy that uses a constant value of 1 for all CrawlURIs.
+ * A CostAssignment policy that uses the via and current URI and are
+ * provided to a classifier through its API and uses the given
+ * score as inverse cost (1 - score)
  * 
  * @author cgr71ii
  */
 public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements HasKeyedProperties {
-//public class PUCCostAssignmentPolicy extends CostAssignmentPolicy {
-//public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Serializable, HasKeyedProperties {
+
     private static final long serialVersionUID = 1L;
 
+    private static final ConfigPath logFile = new ConfigPath(PUCCostAssignmentPolicy.class.getName(),"${launchId}/logs/cost_puc.log");
     private static final Logger logger = Logger.getLogger(PUCCostAssignmentPolicy.class.getName());
 
     protected KeyedProperties kp = new KeyedProperties();
@@ -59,11 +64,28 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         return kp;
     }
 
+    private static void setupLogFile() throws IOException, SecurityException {
+        logger.setLevel(Level.INFO);
+
+        GenerationFileHandler fh = GenerationFileHandler.makeNew(logFile.getFile().getAbsolutePath(), false, false);
+
+        logger.addHandler(fh);
+        logger.setUseParentHandlers(false);
+    }
+
     {
         setMetricServerUrl("http://localhost:5000/inference");
         setUserAgent(String.format("heritrix: %s", PUCCostAssignmentPolicy.class.getName()));
         setUrlsBase64(true);
         setLoggerFine(false);
+
+        try {
+            setupLogFile();
+        } catch (Exception e) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.warning("couldn't setup the log file: " + e.toString());
+            }
+        }
     }
 
     public String getMetricServerUrl() {
@@ -200,7 +222,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
 
         // The result is expected to be [0, 1]
-        result = result * 100.0 * 100.0; // [0, 1] -> [0, 100] -> more precission (2 decimals) [0, 10000]
+        result = result * 100.0; // [0, 1] -> [0, 100]
 
         return result;
     }
@@ -212,7 +234,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
         String str_uri = uri.toCustomString();
-        int cost = 10001;
+        int cost = 101;
 
         if (via != null) {
             String str_via = via.toCustomString();
@@ -222,10 +244,10 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                 str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
             }
 
-            // Metric should be a value in [0, 10000]
+            // Metric should be a value in [0, 100]
             double similarity = requestMetric(str_uri, str_via);
 
-            cost = 10000 - (int)similarity + 1; // [1, 10001]
+            cost = 100 - (int)similarity + 1; // [1, 101]
 
             if (logger.isLoggable(Level.FINE)) {
                 logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));

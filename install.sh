@@ -13,7 +13,7 @@ if [[ ! -z "$HERITRIX_SKIP_TESTS" ]]; then
   if [[ "$HERITRIX_SKIP_TESTS" == "true" ]]; then
     HERITRIX_SKIP_TESTS="-DskipTests"
   elif [[ "$HERITRIX_SKIP_TESTS" == "false" ]]; then
-    HERITRIX_SKIP_TESTS = ""
+    HERITRIX_SKIP_TESTS=""
   else
     >&2 echo "skip-tests only allows 'true' and 'false'"
 
