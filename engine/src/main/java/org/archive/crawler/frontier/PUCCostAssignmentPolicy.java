@@ -56,7 +56,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
     private static final long serialVersionUID = 1L;
 
-    private static final ConfigPath logFile = new ConfigPath(PUCCostAssignmentPolicy.class.getName(),"${launchId}/logs/cost_puc.log");
+    //private static final ConfigPath logFile = new ConfigPath(PUCCostAssignmentPolicy.class.getName(),"${launchId}/logs/cost_puc.log");
     private static final Logger logger = Logger.getLogger(PUCCostAssignmentPolicy.class.getName());
 
     protected KeyedProperties kp = new KeyedProperties();
@@ -64,6 +64,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         return kp;
     }
 
+    /*
     private static void setupLogFile() throws IOException, SecurityException {
         logger.setLevel(Level.INFO);
 
@@ -72,6 +73,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         logger.addHandler(fh);
         logger.setUseParentHandlers(false);
     }
+    */
 
     {
         setMetricServerUrl("http://localhost:5000/inference");
@@ -79,6 +81,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         setUrlsBase64(true);
         setLoggerFine(false);
 
+        /*
         try {
             setupLogFile();
         } catch (Exception e) {
@@ -86,6 +89,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                 logger.warning("couldn't setup the log file: " + e.toString());
             }
         }
+        */
     }
 
     public String getMetricServerUrl() {
