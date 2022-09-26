@@ -239,18 +239,31 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         if (via != null) {
             String str_via = via.toCustomString();
 
-            if (getUrlsBase64()) {
-                str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes());
-                str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
+            if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
+                (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
+                if (getUrlsBase64()) {
+                    str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes());
+                    str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
+                }
+
+                // Metric should be a value in [0, 100]
+                double similarity = requestMetric(str_via, str_uri);
+
+                cost = 100 - (int)similarity + 1; // [1, 101]
+
+                if (logger.isLoggable(Level.FINE)) {
+                    logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                }
             }
+            else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
+                cost = 0;
+            }
+            else {
+                cost = 101;
 
-            // Metric should be a value in [0, 100]
-            double similarity = requestMetric(str_via, str_uri);
-
-            cost = 100 - (int)similarity + 1; // [1, 101]
-
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                if (logger.isLoggable(Level.WARNING)) {
+                    logger.warning(String.format("Unexpected URI scheme: via<tab>uri: %s\t%s", str_via, str_uri));
+                }
             }
         }
         else {
