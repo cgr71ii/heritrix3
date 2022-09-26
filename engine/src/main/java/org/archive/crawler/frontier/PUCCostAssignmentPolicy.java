@@ -245,7 +245,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             }
 
             // Metric should be a value in [0, 100]
-            double similarity = requestMetric(str_uri, str_via);
+            double similarity = requestMetric(str_via, str_uri);
 
             cost = 100 - (int)similarity + 1; // [1, 101]
 
