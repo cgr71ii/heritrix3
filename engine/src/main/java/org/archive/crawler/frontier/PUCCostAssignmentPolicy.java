@@ -45,6 +45,8 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import java.nio.file.Paths;
+
 /**
  * A CostAssignment policy that uses the via and current URI and are
  * provided to a classifier through its API and uses the given
@@ -97,7 +99,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     }
 
     public void setMetricServerUrl(String metric_url) {
-        kp.put("metricServerUrl",metric_url);
+        kp.put("metricServerUrl", metric_url);
     }
 
     public String getUserAgent() {
@@ -105,7 +107,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     }
 
     public void setUserAgent(String user_agent) {
-        kp.put("userAgent",user_agent);
+        kp.put("userAgent", user_agent);
     }
 
     public Boolean getUrlsBase64() {
@@ -113,7 +115,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     }
 
     public void setUrlsBase64(Boolean urls_base64) {
-        kp.put("urlsBase64",urls_base64);
+        kp.put("urlsBase64", urls_base64);
     }
 
     public Boolean getLoggerFine() {
@@ -125,7 +127,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             logger.setLevel(Level.FINE);
         }
 
-        kp.put("loggerFine",logger_fine);
+        kp.put("loggerFine", logger_fine);
     }
 
     private String sendPOST(String params) throws IOException {
@@ -231,16 +233,26 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         return result;
     }
 
-    /* (non-Javadoc)
-     * @see org.archive.crawler.frontier.CostAssignmentPolicy#costOf(org.archive.crawler.datamodel.CrawlURI)
-     */
     public int costOf(CrawlURI curi) {
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
         String str_uri = uri.toCustomString();
         int cost = 101;
+        String uri_file = "";
 
-        if (via != null) {
+        try {
+            uri_file = Paths.get(uri.getPath()).getFileName().toString();
+        }
+        catch (Exception e) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.warning("URI path exception: " + e.toString());
+            }
+        }
+
+        if (uri_file.equals("robots.txt")){
+            cost = 1;
+        }
+        else if (via != null) {
             String str_via = via.toCustomString();
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
@@ -260,7 +272,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                 }
             }
             else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
-                cost = 0;
+                cost = 1;
             }
             else {
                 cost = 101;
@@ -271,6 +283,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             }
         }
         else {
+            cost = 1;
+
             if (logger.isLoggable(Level.FINE)) {
                 logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
             }
