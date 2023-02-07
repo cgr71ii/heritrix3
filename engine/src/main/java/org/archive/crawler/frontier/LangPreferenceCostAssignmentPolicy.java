@@ -73,8 +73,9 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     {
-        setLoggerFine(false);
         setLangPreference("en");
+        setOnlyReliableDetection(true);
+        setLoggerFine(false);
     }
 
     public String getLangPreference() {
@@ -83,6 +84,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
 
     public void setLangPreference(String lang_preference) {
         kp.put("langPreference", lang_preference);
+    }
+
+    public Boolean getOnlyReliableDetection() {
+        return (Boolean) kp.get("onlyReliableDetection");
+    }
+
+    public void setOnlyReliableDetection(Boolean only_reliable_detection) {
+        kp.put("onlyReliableDetection", only_reliable_detection);
     }
 
     public Boolean getLoggerFine() {
@@ -138,18 +147,54 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         else if (via != null) {
             String str_via = via.toCustomString();
             String str_via_content = getContent(curi);
-            Result lang_result = Cld2.detect(str_via_content, false);
+            Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
+            boolean is_reliable = lang_result.isReliable();
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
+                if ((getOnlyReliableDetection() && is_reliable) || !getOnlyReliableDetection()) {
+                    String detected_langs = lang_result.toJSON();
+                    JSONObject obj = new JSONObject(detected_langs);
+                    double text_covered_perc = 0.0;
 
-                // Metric should be a value in [0, 100]
-                double similarity = 1.0;
+                    try {
+                        JSONArray langs = obj.getJSONArray("languages");
+                        String[] lang_codes = new String[langs.length()];
+                        String[] text_covered_langs = new String[langs.length()];
 
-                cost = 100 - (int)similarity + 1; // [1, 101]
+                        for (int i = 0; i < langs.length(); i++) {
+                            JSONObject lang_json = langs.getJSONObject(i);
+                            String lang_code = lang_json.getString("code");
+                            Double text_covered = lang_json.getDouble("text-covered") * 100.0;
 
-                if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                            if (lang_code.equals(lang_preference)) {
+                                text_covered_perc = text_covered;
+                            }
+
+                            lang_codes[i] = lang_code;
+                            text_covered_langs[i] = text_covered.toString();
+                        }
+
+                        if (logger.isLoggable(Level.FINE)) {
+                            logger.fine(String.format("langs<tab>text_covered<tab>via<tab>uri: %s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
+                        }
+                    } catch (JSONException e) {
+                        if (logger.isLoggable(Level.WARNING)) {
+                            logger.warning(String.format("JSON exception (unexpected): %s", e.toString()));
+                        }
+                    }
+
+                    // Metric should be a value in [0, 100]
+                    double similarity = text_covered_perc;
+
+                    cost = 100 - (int)similarity + 1; // [1, 101]
+
+                    if (logger.isLoggable(Level.FINE)) {
+                        logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                    }
+                }
+                else if (logger.isLoggable(Level.FINE)) {
+                    logger.fine(String.format("reliable<tab>via<tab>uri: %s\t%s\t%s", is_reliable, str_via, str_uri));
                 }
             }
             else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
