@@ -24,9 +24,6 @@ import org.archive.modules.CrawlURI;
 
 import org.archive.spring.HasKeyedProperties;
 import org.archive.spring.KeyedProperties;
-import org.archive.spring.ConfigPath;
-
-import org.archive.io.GenerationFileHandler;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -37,20 +34,13 @@ import java.util.logging.Logger;
 
 import java.util.stream.Collectors;
 
-import java.util.Base64;
-
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.InputStream;
 
 import java.nio.charset.StandardCharsets;
 
 import java.nio.file.Paths;
-
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 import org.commoncrawl.langdetect.cld2.Cld2;
 import org.commoncrawl.langdetect.cld2.Result;
@@ -74,8 +64,18 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
 
     {
         setLangPreference("en");
+        setUseOnlyMainLang(true);
+        setUseCoveredText(true);
         setOnlyReliableDetection(true);
         setLoggerFine(false);
+    }
+
+    public Boolean getUseCoveredText() {
+        return (Boolean) kp.get("useCoveredText");
+    }
+
+    public void setUseCoveredText(Boolean use_covered_text) {
+        kp.put("useCoveredText", use_covered_text);
     }
 
     public String getLangPreference() {
@@ -84,6 +84,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
 
     public void setLangPreference(String lang_preference) {
         kp.put("langPreference", lang_preference);
+    }
+
+    public Boolean getUseOnlyMainLang() {
+        return (Boolean) kp.get("onlyReliableDetection");
+    }
+
+    public void setUseOnlyMainLang(Boolean use_only_main_lang) {
+        kp.put("useOnlyMainLang", use_only_main_lang);
     }
 
     public Boolean getOnlyReliableDetection() {
@@ -168,7 +176,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                             Double text_covered = lang_json.getDouble("text-covered") * 100.0;
 
                             if (lang_code.equals(lang_preference)) {
-                                text_covered_perc = text_covered;
+                                if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
+                                    if (getUseCoveredText()) {
+                                        text_covered_perc = text_covered;
+                                    }
+                                    else {
+                                        text_covered_perc = 50.0; // It doesn't matter the specific result but that all have the same value
+                                    }
+                                }
                             }
 
                             lang_codes[i] = lang_code;
@@ -201,7 +216,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                 cost = 1;
             }
             else {
-                cost = 101;
+                cost = 150;
 
                 if (logger.isLoggable(Level.WARNING)) {
                     logger.warning(String.format("Unexpected URI scheme: via<tab>uri: %s\t%s", str_via, str_uri));
