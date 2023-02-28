@@ -122,6 +122,12 @@
 			<artifactId>language-detection-cld2</artifactId>
 			<version>0.1-SNAPSHOT</version>
 		</dependency>
+		<!-- https://github.com/google/guava -->
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>31.1-jre</version>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -18,6 +18,8 @@
  */
 package org.archive.crawler.frontier;
 
+import org.archive.crawler.util.PUC;
+
 import org.archive.net.UURI;
 
 import org.archive.modules.CrawlURI;
@@ -32,23 +34,14 @@ import org.json.JSONException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import java.util.stream.Collectors;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.InputStream;
-
-import java.nio.charset.StandardCharsets;
-
 import java.nio.file.Paths;
 
 import org.commoncrawl.langdetect.cld2.Cld2;
 import org.commoncrawl.langdetect.cld2.Result;
 
 /**
- * A CostAssignment policy that uses the via and current URI and are
- * provided to a classifier through its API and uses the given
- * score as inverse cost (1 - score)
+ * A CostAssignment policy that uses the current URI and is
+ * provided to CLD2 and assign the cost.
  * 
  * @author cgr71ii
  */
@@ -114,24 +107,6 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         kp.put("loggerFine", logger_fine);
     }
 
-    public String getContent(CrawlURI curi) {
-        String str_content = "";
-
-        try (InputStream stream = curi.getFullVia().getRecorder().getContentReplayInputStream()) {
-            str_content = new BufferedReader(
-                new InputStreamReader(stream, StandardCharsets.UTF_8))
-                    .lines()
-                    .collect(Collectors.joining("\n"));
-        }
-        catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.warning("stream exception: " + e.toString());
-            }
-        }
-
-        return str_content;
-    }
-
     public int costOf(CrawlURI curi) {
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
@@ -154,7 +129,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         }
         else if (via != null) {
             String str_via = via.toCustomString();
-            String str_via_content = getContent(curi);
+            String str_via_content = PUC.getContent(curi, logger);
             Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
             boolean is_reliable = lang_result.isReliable();
 

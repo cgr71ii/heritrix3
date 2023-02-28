@@ -267,16 +267,16 @@ http://example.example/example
   <property name="logToFile" value="true" />
   <property name="rules">
    <list>
-    <bean class="org.archive.modules.deciderules.AcceptDecideRule" />
+    <bean class="org.archive.modules.deciderules.AcceptDecideRule" /> <!-- We accept by default and reject if needed -->
     <bean class="org.archive.modules.deciderules.HopsPathMatchesRegexDecideRule">
-     <property name="regex" value=".*E.*" />
+     <property name="regex" value=".*E.*" /> <!-- https://github.com/internetarchive/heritrix3/issues/453#issuecomment-1233728421 -->
      <property name="decision" value="REJECT" />
     </bean>
-    <bean class="org.archive.modules.deciderules.ContentTypeMatchesRegexDecideRule">
+    <bean class="org.archive.modules.deciderules.ContentTypeMatchesRegexDecideRule"> <!-- Reject non-text files -->
      <property name="decision" value="REJECT" />
      <property name="regex" value="^application/(pdf|zip|font|gzip|x-gzip|binary).*$|^(image|video|audio|binary|font).*$" />
     </bean>
-    <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" />
+    <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" /> <!-- Be sure that prerequisites are satisfied -->
    </list>
   </property>
  </bean>

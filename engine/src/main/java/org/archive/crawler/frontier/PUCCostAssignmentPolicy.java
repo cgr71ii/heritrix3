@@ -18,15 +18,14 @@
  */
 package org.archive.crawler.frontier;
 
+import org.archive.crawler.util.PUC;
+
 import org.archive.net.UURI;
 
 import org.archive.modules.CrawlURI;
 
 import org.archive.spring.HasKeyedProperties;
 import org.archive.spring.KeyedProperties;
-import org.archive.spring.ConfigPath;
-
-import org.archive.io.GenerationFileHandler;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -37,23 +36,7 @@ import java.util.logging.Logger;
 
 import java.util.Base64;
 
-import java.util.stream.Collectors;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.InputStream;
-
-import java.net.HttpURLConnection;
-import java.net.URL;
-
 import java.nio.file.Paths;
-
-import java.nio.charset.StandardCharsets;
-
-import org.commoncrawl.langdetect.cld2.Cld2;
-import org.commoncrawl.langdetect.cld2.Result;
 
 /**
  * A CostAssignment policy that uses the via and current URI and are
@@ -183,39 +166,6 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         kp.put("loggerFine", logger_fine);
     }
 
-    private String sendPOST(String params) throws IOException {
-		URL obj = new URL(getMetricServerUrl());
-		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-		con.setRequestMethod("POST");
-		con.setRequestProperty("User-Agent", getUserAgent());
-
-		// For POST only - START
-		con.setDoOutput(true);
-		OutputStream os = con.getOutputStream();
-		os.write(params.getBytes());
-		os.flush();
-		os.close();
-		// For POST only - END
-
-		int responseCode = con.getResponseCode();
-
-		if (responseCode == HttpURLConnection.HTTP_OK) { //success
-			BufferedReader in = new BufferedReader(new InputStreamReader(
-					con.getInputStream()));
-			String inputLine;
-			StringBuffer response = new StringBuffer();
-
-			while ((inputLine = in.readLine()) != null) {
-				response.append(inputLine);
-			}
-			in.close();
-
-            return response.toString();
-		}
-
-        return null;
-	}
-
     public double requestMetric(String src_url, String trg_url, String src_lang, String trg_lang) {
         double result = 0.0;
         String request_param = "";
@@ -232,7 +182,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
 
         try {
-            String request_result = sendPOST(request_param);
+            String request_result = PUC.sendPOST(getMetricServerUrl(), request_param, getUserAgent());
 
             if (request_result == null) {
                 if (logger.isLoggable(Level.WARNING)) {
@@ -293,53 +243,6 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         return result;
     }
 
-    public String getContent(CrawlURI curi) {
-        String str_content = "";
-
-        try (InputStream stream = curi.getFullVia().getRecorder().getContentReplayInputStream()) {
-            str_content = new BufferedReader(
-                new InputStreamReader(stream, StandardCharsets.UTF_8))
-                    .lines()
-                    .collect(Collectors.joining("\n"));
-        }
-        catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.warning("stream exception: " + e.toString());
-            }
-        }
-
-        return str_content;
-    }
-
-    public String isLangOk(CrawlURI curi) {
-        String lang1 = getLangPreference1();
-        String lang2 = getLangPreference2();
-
-        if (lang1.equals("") || lang2.equals("")) {
-            return "";
-        }
-
-        String file_content = getContent(curi);
-        Result lang_result = Cld2.detect(file_content, false);
-        Boolean is_reliable = lang_result.isReliable();
-        String best_lang_code = lang_result.getLanguageCode();
-
-        if (logger.isLoggable(Level.FINE)) {
-            logger.fine(String.format("lang<tab>reliable<tab>via: %s\t%s", is_reliable, best_lang_code, curi.getVia().toCustomString()));
-        }
-
-        if ((getOnlyReliableDetection() && is_reliable) || !getOnlyReliableDetection()) {
-            if (best_lang_code.equals(lang1)) {
-                return lang1;
-            }
-            else if (best_lang_code.equals(lang2)) {
-                return lang2;
-            }
-        }
-
-        return "";
-    }
-
     public int costOf(CrawlURI curi) {
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
@@ -371,7 +274,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
                 // Language
                 if (getUseLanguages()) {
-                    lang_ok = isLangOk(curi);
+                    lang_ok = PUC.isLangOk(curi, getLangPreference1(), getLangPreference2(), getOnlyReliableDetection(), logger);
 
                     if (!lang_ok.equals("")) {
                         // via doc lang detected
