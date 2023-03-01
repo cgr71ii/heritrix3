@@ -35,8 +35,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Arrays;
 
-import java.nio.file.Paths;
-
 import org.commoncrawl.langdetect.cld2.Cld2;
 import org.commoncrawl.langdetect.cld2.Result;
 
@@ -123,26 +121,22 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     public int costOf(CrawlURI curi) {
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
-        String str_uri = uri.toCustomString();
+        String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
         int cost = 101;
         String uri_file = "";
         String lang_preference = getLangPreference();
         String[] langs_preference = lang_preference.split("[|]");
+        int uri_resource_idx = str_uri.lastIndexOf("/");
 
-        try {
-            if (uri != null && uri.getPath() != null) {
-                uri_file = Paths.get(uri.getPath()).getFileName().toString();
-            }
-        }
-        catch (Exception e) {
-            logger.log(Level.WARNING, String.format("URI path exception: %s", str_uri), e);
+        if (uri_resource_idx >= 0) {
+            uri_file = str_uri.substring(uri_resource_idx + 1);
         }
 
         if (uri_file.equals("robots.txt")){
             cost = 1;
         }
         else if (via != null) {
-            String str_via = via.toCustomString();
+            String str_via = PUC.removeTrailingSlashes(via.toCustomString());
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {

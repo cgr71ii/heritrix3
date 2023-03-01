@@ -36,8 +36,6 @@ import java.util.logging.Logger;
 
 import java.util.Base64;
 
-import java.nio.file.Paths;
-
 /**
  * A CostAssignment policy that uses the via and current URI and are
  * provided to a classifier through its API and uses the given
@@ -239,24 +237,20 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     public int costOf(CrawlURI curi) {
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
-        String str_uri = uri.toCustomString();
+        String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
         int cost = 101;
         String uri_file = "";
+        int uri_resource_idx = str_uri.lastIndexOf("/");
 
-        try {
-            if (uri != null && uri.getPath() != null) {
-                uri_file = Paths.get(uri.getPath()).getFileName().toString();
-            }
-        }
-        catch (Exception e) {
-            logger.log(Level.WARNING, String.format("URI path exception: %s", str_uri), e);
+        if (uri_resource_idx >= 0) {
+            uri_file = str_uri.substring(uri_resource_idx + 1);
         }
 
         if (uri_file.equals("robots.txt")){
             cost = 1;
         }
         else if (via != null) {
-            String str_via = via.toCustomString();
+            String str_via = PUC.removeTrailingSlashes(via.toCustomString());
             String src_urls_lang = "";
             String trg_urls_lang = "";
             Boolean rev_urls_and_langs = false;

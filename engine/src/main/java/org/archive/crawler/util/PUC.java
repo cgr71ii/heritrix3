@@ -119,4 +119,16 @@ public class PUC {
         return "";
     }
 
+    public static String removeTrailingSlashes(String uri) {
+        if (uri == null) {
+            return uri;
+        }
+
+        while (uri.endsWith("/")) {
+            uri = uri.substring(0, uri.length() - 1);
+        }
+
+        return uri;
+    }
+
 }
