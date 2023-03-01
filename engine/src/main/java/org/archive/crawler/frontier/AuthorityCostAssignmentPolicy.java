@@ -80,9 +80,7 @@ public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
             uri_file = Paths.get(uri.getPath()).getFileName().toString();
         }
         catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.warning("URI path exception: " + e.toString());
-            }
+            logger.log(Level.WARNING, "URI path exception", e);
         }
 
         if (uri_file.equals("robots.txt")){
@@ -90,15 +88,27 @@ public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
         }
         else if (via != null) {
             String str_via = via.toCustomString();
-            String uri_domain = PUC.getDomain(str_uri, logger);
-            String via_domain = PUC.getDomain(str_via, logger);
 
-            if (uri_domain.equals(via_domain)) {
-                // Same domain
+            if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
+                (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
+                String uri_domain = PUC.getDomain(str_uri, logger);
+                String via_domain = PUC.getDomain(str_via, logger);
+
+                if (uri_domain.equals(via_domain)) {
+                    // Same domain
+                    cost = 1;
+                }
+                else if (logger.isLoggable(Level.FINE)) {
+                    logger.fine(String.format("Different domain: %s vs %s", str_via, str_uri));
+                }
+            }
+            else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
                 cost = 1;
             }
-            else if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("Different domain: %s vs %s", str_via, str_uri));
+            else {
+                cost = 150;
+
+                logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
             }
         }
         else {
