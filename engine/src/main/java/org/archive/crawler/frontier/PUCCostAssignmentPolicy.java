@@ -162,6 +162,9 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         if (logger_fine) {
             logger.setLevel(Level.FINE);
         }
+        else {
+            logger.setLevel(Level.INFO);
+        }
 
         kp.put("loggerFine", logger_fine);
     }
@@ -185,9 +188,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             String request_result = PUC.sendPOST(getMetricServerUrl(), request_param, getUserAgent());
 
             if (request_result == null) {
-                if (logger.isLoggable(Level.WARNING)) {
-                    logger.warning("request result was null");
-                }
+                logger.log(Level.WARNING, "Request result was null");
 
                 // Set similarity to minimum value
                 result = 0.0;
@@ -203,9 +204,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     JSONArray scores = obj.getJSONArray("ok");
 
                     if (scores.length() != 1) {
-                        if (logger.isLoggable(Level.WARNING)) {
-                            logger.warning(String.format("unexpected length of scores: %d", scores.length()));
-                        }
+                        logger.log(Level.WARNING, String.format("Unexpected length of scores: %d", scores.length()));
 
                         // Set similarity to minimum value
                         result = 0.0;
@@ -218,20 +217,14 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     try {
                         String error = obj.getString("null");
 
-                        if (logger.isLoggable(Level.WARNING)) {
-                            logger.warning("PUC error: " + error + ": " + e.toString());
-                        }
+                        logger.log(Level.WARNING, String.format("PUC error: %s", error), e);
                     } catch (JSONException e2) {
-                        if (logger.isLoggable(Level.WARNING)) {
-                            logger.warning("JSON exception: " + e2.toString());
-                        }
+                        logger.log(Level.WARNING, "JSON exception", e2);
                     }
                 }
             }
         } catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.warning("request exception: " + e.toString());
-            }
+            logger.log(Level.WARNING, "Request exception", e);
 
             // Set similarity to minimum value
             result = 0.0;
@@ -254,9 +247,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             uri_file = Paths.get(uri.getPath()).getFileName().toString();
         }
         catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.warning("URI path exception: " + e.toString());
-            }
+            logger.log(Level.WARNING, String.format("URI path exception: %s", str_uri), e);
         }
 
         if (uri_file.equals("robots.txt")){
@@ -271,6 +262,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
                 String lang_ok = "";
+                String uri_domain = PUC.getDomain(str_uri, logger);
+                String via_domain = PUC.getDomain(str_via, logger);
 
                 // Language
                 if (getUseLanguages()) {
@@ -292,15 +285,19 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                             rev_urls_and_langs = true;
                         }
                         else {
-                            if (logger.isLoggable(Level.WARNING)) {
-                                logger.warning(String.format("Unexpected languages mismatch: lant1<tab>lang2<tab>detected_lang: %s\t%s\t%s", lang1, lang2, lang_ok));
-                            }
+                            logger.log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | detected_lang: %s | %s | %s", lang1, lang2, lang_ok));
                         }
                     }
                 }
 
-                // Apply classifier
-                if ((!getUseLanguages() || (getUseLanguages() && !lang_ok.equals("")))) { // We don't want to evaluate docs which are not in the selected language
+                if (getUseLanguages() && lang_ok.equals("")) {
+                    cost = 110;
+                }
+                else if (getSameDomain() && !uri_domain.equals(via_domain)) {
+                    cost = 50; // We want to explore, so 100 // 2 seems an appropiate value
+                }
+                // Apply classifier (we don't want to evaluate docs which are not in the selected language or domain)
+                else {
                     if (getUrlsBase64()) {
                         str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes());
                         str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
@@ -330,9 +327,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             else {
                 cost = 150;
 
-                if (logger.isLoggable(Level.WARNING)) {
-                    logger.warning(String.format("Unexpected URI scheme: via<tab>uri: %s\t%s", str_via, str_uri));
-                }
+                logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
             }
         }
         else {

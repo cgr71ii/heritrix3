@@ -1,0 +1,122 @@
+package org.archive.crawler.util;
+
+import org.archive.modules.CrawlURI;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
+import java.nio.charset.StandardCharsets;
+
+import org.commoncrawl.langdetect.cld2.Cld2;
+import org.commoncrawl.langdetect.cld2.Result;
+
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URI;
+
+import com.google.common.net.InternetDomainName;
+
+public class PUC {
+
+    public static String getContent(CrawlURI curi, Logger logger) {
+        String str_content = "";
+
+        try (InputStream stream = curi.getFullVia().getRecorder().getContentReplayInputStream()) {
+            str_content = new BufferedReader(
+                new InputStreamReader(stream, StandardCharsets.UTF_8))
+                    .lines()
+                    .collect(Collectors.joining("\n"));
+        }
+        catch (Exception e) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.warning("stream exception: " + e.toString());
+            }
+        }
+
+        return str_content;
+    }
+
+    public static String isLangOk(CrawlURI curi, String lang1, String lang2, Boolean only_reliable, Logger logger) {
+        if (lang1.equals("") || lang2.equals("")) {
+            return "";
+        }
+
+        String file_content = PUC.getContent(curi, logger);
+        Result lang_result = Cld2.detect(file_content, false);
+        Boolean is_reliable = lang_result.isReliable();
+        String best_lang_code = lang_result.getLanguageCode();
+
+        if (logger.isLoggable(Level.FINE)) {
+            logger.fine(String.format("lang<tab>reliable<tab>via: %s\t%s", is_reliable, best_lang_code, curi.getVia().toCustomString()));
+        }
+
+        if ((only_reliable && is_reliable) || !only_reliable) {
+            if (best_lang_code.equals(lang1)) {
+                return lang1;
+            }
+            else if (best_lang_code.equals(lang2)) {
+                return lang2;
+            }
+        }
+
+        return "";
+    }
+
+    public static String sendPOST(String url, String params, String user_agent) throws IOException {
+		URL obj = new URL(url);
+		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+		con.setRequestMethod("POST");
+		con.setRequestProperty("User-Agent", user_agent);
+
+		// For POST only - START
+		con.setDoOutput(true);
+		OutputStream os = con.getOutputStream();
+		os.write(params.getBytes());
+		os.flush();
+		os.close();
+		// For POST only - END
+
+		int responseCode = con.getResponseCode();
+
+		if (responseCode == HttpURLConnection.HTTP_OK) { //success
+			BufferedReader in = new BufferedReader(new InputStreamReader(
+					con.getInputStream()));
+			String inputLine;
+			StringBuffer response = new StringBuffer();
+
+			while ((inputLine = in.readLine()) != null) {
+				response.append(inputLine);
+			}
+			in.close();
+
+            return response.toString();
+		}
+
+        return null;
+	}
+
+    public static String getDomain(String uri, Logger logger) {
+        try {
+            String authority = (new URI(uri)).getHost();
+            InternetDomainName idn = InternetDomainName.from(authority);
+            String tld = idn.publicSuffix().toString();
+            String domain_and_tld = idn.topPrivateDomain().toString();
+            String domain = domain_and_tld.substring(0, domain_and_tld.length() - tld.length() - 1);
+
+            return domain;
+        }
+        catch (Exception e) {
+            logger.log(Level.WARNING,"uri="+uri, e);
+        }
+
+        return "";
+    }
+
+}

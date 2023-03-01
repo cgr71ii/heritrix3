@@ -33,6 +33,7 @@ import org.json.JSONException;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Arrays;
 
 import java.nio.file.Paths;
 
@@ -56,11 +57,20 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     {
-        setLangPreference("en");
+        setSameDomainReward(49.0);
+        setLangPreference("en|fr");
         setUseOnlyMainLang(true);
         setUseCoveredText(true);
         setOnlyReliableDetection(true);
         setLoggerFine(false);
+    }
+
+    public Double getSameDomainReward() {
+        return (Double) kp.get("sameDomainReward");
+    }
+
+    public void setSameDomainReward(Double same_domain_reward) {
+        kp.put("sameDomainReward", same_domain_reward);
     }
 
     public Boolean getUseCoveredText() {
@@ -103,6 +113,9 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         if (logger_fine) {
             logger.setLevel(Level.FINE);
         }
+        else {
+            logger.setLevel(Level.INFO);
+        }
 
         kp.put("loggerFine", logger_fine);
     }
@@ -114,14 +127,13 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         int cost = 101;
         String uri_file = "";
         String lang_preference = getLangPreference();
+        String[] langs_preference = lang_preference.split("[|]");
 
         try {
             uri_file = Paths.get(uri.getPath()).getFileName().toString();
         }
         catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.warning("URI path exception: " + e.toString());
-            }
+            logger.log(Level.WARNING, String.format("URI path exception: %s", str_uri), e);
         }
 
         if (uri_file.equals("robots.txt")){
@@ -129,16 +141,19 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         }
         else if (via != null) {
             String str_via = via.toCustomString();
-            String str_via_content = PUC.getContent(curi, logger);
-            Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
-            boolean is_reliable = lang_result.isReliable();
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
+                String uri_domain = PUC.getDomain(str_uri, logger);
+                String via_domain = PUC.getDomain(str_via, logger);
+                String str_via_content = PUC.getContent(curi, logger);
+                Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
+                boolean is_reliable = lang_result.isReliable();
+
                 if ((getOnlyReliableDetection() && is_reliable) || !getOnlyReliableDetection()) {
                     String detected_langs = lang_result.toJSON();
                     JSONObject obj = new JSONObject(detected_langs);
-                    double text_covered_perc = 0.0;
+                    Double text_covered_perc = null;
 
                     try {
                         JSONArray langs = obj.getJSONArray("languages");
@@ -150,13 +165,13 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                             String lang_code = lang_json.getString("code");
                             Double text_covered = lang_json.getDouble("text-covered") * 100.0;
 
-                            if (lang_code.equals(lang_preference)) {
+                            if (text_covered_perc == null && Arrays.asList(langs_preference).contains(lang_code)) {
                                 if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
                                     if (getUseCoveredText()) {
                                         text_covered_perc = text_covered;
                                     }
                                     else {
-                                        text_covered_perc = 50.0; // It doesn't matter the specific result but that all have the same value
+                                        text_covered_perc = 51.0; // It doesn't matter the specific result but that all have the same value
                                     }
                                 }
                             }
@@ -169,18 +184,30 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                             logger.fine(String.format("langs<tab>text_covered<tab>via<tab>uri: %s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
                         }
                     } catch (JSONException e) {
-                        if (logger.isLoggable(Level.WARNING)) {
-                            logger.warning(String.format("JSON exception (unexpected): %s", e.toString()));
-                        }
+                        logger.log(Level.WARNING, String.format("JSON exception (unexpected): %s -> %s", str_via, str_uri), e);
                     }
 
-                    // Metric should be a value in [0, 100]
-                    double similarity = text_covered_perc;
+                    if (text_covered_perc == null) {
+                        // Lang preference not detected
+                        cost = 110;
+                    }
+                    else {
+                        // Metric should be a value in [0, 100]
+                        double similarity = text_covered_perc; // 0.0, 51.0 or text_covered
 
-                    cost = 100 - (int)similarity + 1; // [1, 101]
+                        if (uri_domain.equals(via_domain)) {
+                            similarity += getSameDomainReward();
+                        }
 
-                    if (logger.isLoggable(Level.FINE)) {
-                        logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                        if (similarity > 100.0) {
+                            similarity = 100.0;
+                        }
+
+                        cost = 100 - (int)similarity + 1; // [1, 101]
+
+                        if (logger.isLoggable(Level.FINE)) {
+                            logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                        }
                     }
                 }
                 else if (logger.isLoggable(Level.FINE)) {
@@ -193,9 +220,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             else {
                 cost = 150;
 
-                if (logger.isLoggable(Level.WARNING)) {
-                    logger.warning(String.format("Unexpected URI scheme: via<tab>uri: %s\t%s", str_via, str_uri));
-                }
+                logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
             }
         }
         else {

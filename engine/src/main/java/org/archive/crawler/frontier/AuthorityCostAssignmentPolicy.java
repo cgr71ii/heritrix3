@@ -18,7 +18,18 @@
  */
 package org.archive.crawler.frontier;
 
+import org.archive.crawler.util.PUC;
+
 import org.archive.modules.CrawlURI;
+
+import org.archive.spring.KeyedProperties;
+
+import org.archive.net.UURI;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import java.nio.file.Paths;
 
 /**
  * A CostAssignment policy that checks parts of the authority in order to
@@ -29,11 +40,75 @@ import org.archive.modules.CrawlURI;
 public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
     private static final long serialVersionUID = 1L;
 
+    private static final Logger logger = Logger.getLogger(AuthorityCostAssignmentPolicy.class.getName());
+
+    protected KeyedProperties kp = new KeyedProperties();
+    public KeyedProperties getKeyedProperties() {
+        return kp;
+    }
+
+    {
+        setLoggerFine(false);
+    }
+
+    public Boolean getLoggerFine() {
+        return (Boolean) kp.get("loggerFine");
+    }
+
+    public void setLoggerFine(Boolean logger_fine) {
+        if (logger_fine) {
+            logger.setLevel(Level.FINE);
+        }
+        else {
+            logger.setLevel(Level.INFO);
+        }
+
+        kp.put("loggerFine", logger_fine);
+    }
+
     /* (non-Javadoc)
      * @see org.archive.crawler.frontier.CostAssignmentPolicy#costOf(org.archive.crawler.datamodel.CrawlURI)
      */
     public int costOf(CrawlURI curi) {
-        // TODO
+        UURI uri = curi.getUURI();
+        UURI via = curi.getVia();
+        String str_uri = uri.toCustomString();
+        int cost = 50;
+        String uri_file = "";
+
+        try {
+            uri_file = Paths.get(uri.getPath()).getFileName().toString();
+        }
+        catch (Exception e) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.warning("URI path exception: " + e.toString());
+            }
+        }
+
+        if (uri_file.equals("robots.txt")){
+            cost = 1;
+        }
+        else if (via != null) {
+            String str_via = via.toCustomString();
+            String uri_domain = PUC.getDomain(str_uri, logger);
+            String via_domain = PUC.getDomain(str_via, logger);
+
+            if (uri_domain.equals(via_domain)) {
+                // Same domain
+                cost = 1;
+            }
+            else if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("Different domain: %s vs %s", str_via, str_uri));
+            }
+        }
+        else {
+            cost = 1;
+
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+            }
+        }
+
         return 1;
     }
 
