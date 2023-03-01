@@ -5,7 +5,7 @@ HERITRIX_BUILD_LOG_PREFIX="$1"
 HERITRIX_SKIP_TESTS="$2"
 
 if [[ -z "$HERITRIX_BUILD_LOG_PREFIX" ]]; then
-  >&2 echo "Syntax: $(basename $0) <build-log-prefix> [<skip-tests>]"
+  >&2 echo "Syntax: $(basename $0) <build-log-prefix> [<skip-tests>=true|false]"
   exit 1
 fi
 
@@ -16,8 +16,7 @@ if [[ ! -z "$HERITRIX_SKIP_TESTS" ]]; then
     HERITRIX_SKIP_TESTS=""
   else
     >&2 echo "skip-tests only allows 'true' and 'false'"
-
-    HERITRIX_SKIP_TESTS=""
+    exit 1
   fi
 fi
 
@@ -46,7 +45,7 @@ HERITRIX_DIST_PKG=$(ls $HERITRIX_DIST_PKG_PATTERN)
 
 echo "Package: $HERITRIX_DIST_PKG"
 
-TIMESTAMP=$(date +%s)
+TIMESTAMP=$(date +%Y%m%d_%s)
 HERITRIX_PREFIX="${DIR}/build_${TIMESTAMP}"
 
 while [[ -d "$HERITRIX_PREFIX" ]]; do
