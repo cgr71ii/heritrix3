@@ -80,6 +80,32 @@ public class AuthorityCommonSuffixDecideRule extends PredicatedDecideRule {
         kp.put("loggerFine", logger_fine);
     }
 
+    private String getAuthority(String uri) {
+        try {
+            String authority = (new URI(uri)).getHost();
+
+            return authority;
+        }
+        catch (Exception e) {
+            if (LOGGER.isLoggable(Level.FINE)) {
+                LOGGER.fine("uri=" + uri);
+            }
+
+            // Try to recover using regex
+            if (uri.startsWith("http://") || uri.startsWith("https://")) {
+                String[] authority_parts = uri.split("/");
+
+                if (authority_parts.length > 2) {
+                    return authority_parts[2];
+                }
+            }
+
+            LOGGER.log(Level.WARNING,"uri="+uri, e);
+        }
+
+        return "";
+    }
+
     protected boolean evaluate(CrawlURI uri) {
         UURI current_uri = uri.getUURI();
         String str_uri = current_uri.toCustomString();
@@ -88,23 +114,16 @@ public class AuthorityCommonSuffixDecideRule extends PredicatedDecideRule {
         if (common_suffix.equals("") || (!str_uri.startsWith("http://") && !str_uri.startsWith("https://"))) {
             return false;
         }
-        try {
-            // determine if this hop crosses assignment-level-domain borders
-            String authority = (new URI(str_uri)).getHost();
-            Boolean different_suffix = getDifferentSuffix();
 
-            if ((!different_suffix && authority.endsWith(common_suffix)) ||
-                (different_suffix && !authority.endsWith(common_suffix))) {
-                if(LOGGER.isLoggable(Level.FINE)) {
-                    LOGGER.fine("rule matched for \"" + str_uri);
-                }
+        String authority = getAuthority(str_uri);
 
-                return true;
+        if ((!getDifferentSuffix() && authority.endsWith(common_suffix)) ||
+            (getDifferentSuffix() && !authority.endsWith(common_suffix))) {
+            if(LOGGER.isLoggable(Level.FINE)) {
+                LOGGER.fine("rule matched for \"" + str_uri);
             }
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING,"uri="+uri, e);
-            // Return false since we could not get hostname or something else
-            // went wrong
+
+            return true;
         }
 
         return false;

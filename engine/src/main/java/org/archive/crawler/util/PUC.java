@@ -111,12 +111,11 @@ public class PUC {
         return domain;
     }
 
-    public static String getDomain(String uri, Logger logger) {
+    public static String getAuthority(String uri, Logger logger) {
         try {
             String authority = (new URI(uri)).getHost();
-            String domain = PUC.getDomainFromAuthority(authority);
 
-            return domain;
+            return authority;
         }
         catch (Exception e) {
             if (logger.isLoggable(Level.FINE)) {
@@ -128,13 +127,21 @@ public class PUC {
                 String[] authority_parts = uri.split("/");
 
                 if (authority_parts.length > 2) {
-                    String domain = PUC.getDomainFromAuthority(authority_parts[2]);
-
-                    return domain;
+                    return authority_parts[2];
                 }
             }
 
             logger.log(Level.WARNING,"uri="+uri, e);
+        }
+
+        return "";
+    }
+
+    public static String getDomain(String uri, Logger logger) {
+        String authority = PUC.getAuthority(uri, logger);
+
+        if (!authority.equals("")) {
+            return PUC.getDomainFromAuthority(authority);
         }
 
         return "";
