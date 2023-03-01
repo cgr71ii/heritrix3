@@ -130,7 +130,9 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         String[] langs_preference = lang_preference.split("[|]");
 
         try {
-            uri_file = Paths.get(uri.getPath()).getFileName().toString();
+            if (uri != null && uri.getPath() != null) {
+                uri_file = Paths.get(uri.getPath()).getFileName().toString();
+            }
         }
         catch (Exception e) {
             logger.log(Level.WARNING, String.format("URI path exception: %s", str_uri), e);

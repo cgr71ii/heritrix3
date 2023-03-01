@@ -77,10 +77,12 @@ public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
         String uri_file = "";
 
         try {
-            uri_file = Paths.get(uri.getPath()).getFileName().toString();
+            if (uri != null && uri.getPath() != null) {
+                uri_file = Paths.get(uri.getPath()).getFileName().toString();
+            }
         }
         catch (Exception e) {
-            logger.log(Level.WARNING, "URI path exception", e);
+            logger.log(Level.WARNING, String.format("URI path exception: %s", str_uri), e);
         }
 
         if (uri_file.equals("robots.txt")){

@@ -244,7 +244,9 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         String uri_file = "";
 
         try {
-            uri_file = Paths.get(uri.getPath()).getFileName().toString();
+            if (uri != null && uri.getPath() != null) {
+                uri_file = Paths.get(uri.getPath()).getFileName().toString();
+            }
         }
         catch (Exception e) {
             logger.log(Level.WARNING, String.format("URI path exception: %s", str_uri), e);
