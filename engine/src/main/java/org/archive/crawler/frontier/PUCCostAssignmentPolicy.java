@@ -317,7 +317,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     cost = 100 - (int)similarity + 1; // [1, 101]
 
                     if (logger.isLoggable(Level.FINE)) {
-                        logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                        logger.fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
                     }
                 }
             }

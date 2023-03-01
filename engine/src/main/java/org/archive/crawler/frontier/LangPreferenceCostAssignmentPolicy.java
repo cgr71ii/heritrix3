@@ -166,6 +166,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                             Double text_covered = lang_json.getDouble("text-covered") * 100.0;
 
                             if (text_covered_perc == null && Arrays.asList(langs_preference).contains(lang_code)) {
+                                // Only first detected languaged will be processed
+
                                 if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
                                     if (getUseCoveredText()) {
                                         text_covered_perc = text_covered;
@@ -181,14 +183,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                         }
 
                         if (logger.isLoggable(Level.FINE)) {
-                            logger.fine(String.format("langs<tab>text_covered<tab>via<tab>uri: %s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
+                            logger.fine(String.format("langs | text_covered | via -> uri: %s | %s | %s -> %s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
                         }
                     } catch (JSONException e) {
                         logger.log(Level.WARNING, String.format("JSON exception (unexpected): %s -> %s", str_via, str_uri), e);
                     }
 
                     if (text_covered_perc == null) {
-                        // Lang preference not detected
+                        // Target langs not detected
                         cost = 110;
                     }
                     else {
@@ -206,12 +208,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                         cost = 100 - (int)similarity + 1; // [1, 101]
 
                         if (logger.isLoggable(Level.FINE)) {
-                            logger.fine(String.format("cost<tab>similarity<tab>via<tab>uri: %d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
+                            logger.fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
                         }
                     }
                 }
                 else if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("reliable<tab>via<tab>uri: %s\t%s\t%s", is_reliable, str_via, str_uri));
+                    cost = 110;
+
+                    logger.fine(String.format("reliable | via -> uri: %s | %s -> %s", is_reliable, str_via, str_uri));
                 }
             }
             else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
