@@ -215,7 +215,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     }
                 } catch (JSONException e) {
                     try {
-                        String error = obj.getString("null");
+                        String error = obj.getString("err");
 
                         logger.log(Level.WARNING, String.format("PUC error: %s", error), e);
                     } catch (JSONException e2) {
