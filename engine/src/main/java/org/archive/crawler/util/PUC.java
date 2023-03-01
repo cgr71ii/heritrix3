@@ -102,17 +102,38 @@ public class PUC {
         return null;
 	}
 
+    public static String getDomainFromAuthority(String authority) {
+        InternetDomainName idn = InternetDomainName.from(authority);
+        String tld = idn.publicSuffix().toString();
+        String domain_and_tld = idn.topPrivateDomain().toString();
+        String domain = domain_and_tld.substring(0, domain_and_tld.length() - tld.length() - 1);
+
+        return domain;
+    }
+
     public static String getDomain(String uri, Logger logger) {
         try {
             String authority = (new URI(uri)).getHost();
-            InternetDomainName idn = InternetDomainName.from(authority);
-            String tld = idn.publicSuffix().toString();
-            String domain_and_tld = idn.topPrivateDomain().toString();
-            String domain = domain_and_tld.substring(0, domain_and_tld.length() - tld.length() - 1);
+            String domain = PUC.getDomainFromAuthority(authority);
 
             return domain;
         }
         catch (Exception e) {
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine("uri=" + uri);
+            }
+
+            // Try to recover using regex
+            if (uri.startsWith("http://") || uri.startsWith("https://")) {
+                String[] authority_parts = uri.split("/");
+
+                if (authority_parts.length > 2) {
+                    String domain = PUC.getDomainFromAuthority(authority_parts[2]);
+
+                    return domain;
+                }
+            }
+
             logger.log(Level.WARNING,"uri="+uri, e);
         }
 
