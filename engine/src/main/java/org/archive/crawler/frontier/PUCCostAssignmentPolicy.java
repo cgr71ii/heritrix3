@@ -290,7 +290,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     cost = 110;
                 }
                 else if (getSameDomain() && !uri_domain.equals(via_domain)) {
-                    cost = 50; // We want to explore, so 100 // 2 seems an appropiate value
+                    cost = 1; // We want to explore
                 }
                 // Apply classifier (we don't want to evaluate docs which are not in the selected language or domain)
                 else {

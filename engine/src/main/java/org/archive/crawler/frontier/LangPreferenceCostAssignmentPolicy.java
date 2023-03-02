@@ -55,7 +55,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     {
-        setSameDomainReward(49.0);
+        setSameDomainReward(0.0);
         setLangPreference("en|fr");
         setUseOnlyMainLang(true);
         setUseCoveredText(true);
@@ -169,7 +169,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                                         text_covered_perc = text_covered;
                                     }
                                     else {
-                                        text_covered_perc = 51.0; // It doesn't matter the specific result but that all have the same value
+                                        text_covered_perc = 100.1; // It doesn't matter the specific result but that all have the same value
                                     }
                                 }
                             }
@@ -191,7 +191,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                     }
                     else {
                         // Metric should be a value in [0, 100]
-                        double similarity = text_covered_perc; // 0.0, 51.0 or text_covered
+                        double similarity = text_covered_perc; // 0.0, 100.1 or text_covered
 
                         if (uri_domain.equals(via_domain)) {
                             similarity += getSameDomainReward();

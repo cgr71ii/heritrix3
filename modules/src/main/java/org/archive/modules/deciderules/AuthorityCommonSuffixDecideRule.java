@@ -38,7 +38,7 @@ public class AuthorityCommonSuffixDecideRule extends PredicatedDecideRule {
     private static final long serialVersionUID = 1L;
 
     private static final Logger LOGGER = Logger
-            .getLogger(HopCrossesAssignmentLevelDomainDecideRule.class.getName());
+            .getLogger(AuthorityCommonSuffixDecideRule.class.getName());
 
     public AuthorityCommonSuffixDecideRule() {
     }
@@ -120,7 +120,7 @@ public class AuthorityCommonSuffixDecideRule extends PredicatedDecideRule {
         if ((!getDifferentSuffix() && authority.endsWith(common_suffix)) ||
             (getDifferentSuffix() && !authority.endsWith(common_suffix))) {
             if(LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.fine("rule matched for \"" + str_uri);
+                LOGGER.fine("rule matched for " + str_uri);
             }
 
             return true;
