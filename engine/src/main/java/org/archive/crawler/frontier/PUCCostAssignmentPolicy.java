@@ -67,6 +67,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     */
 
     {
+        setClassifierExplorationValue(1);
         setLangPreference1("");
         setLangPreference2("");
         setOnlyReliableDetection(true);
@@ -86,6 +87,14 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             }
         }
         */
+    }
+
+    public Integer getClassifierExplorationValue() {
+        return (Integer) kp.get("classifierExplorationValue");
+    }
+
+    public void setClassifierExplorationValue(Integer classifier_exploration_value) {
+        kp.put("classifierExplorationValue", classifier_exploration_value);
     }
 
     public Boolean getSameDomain() {
@@ -173,6 +182,10 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
         if (src_lang.equals("") || trg_lang.equals("")) {
             request_param = String.format("src_urls=%s&trg_urls=%s", src_url, trg_url);
+
+            if (getUseLanguages()) {
+                logger.log(Level.WARNING, String.format("Src or trg is empty but languages were expected: %s %s %s %s", src_lang, trg_lang, src_url, trg_url));
+            }
         }
         else {
             request_param = String.format("src_urls=%s&trg_urls=%s&src_urls_lang=%s&trg_urls_lang=%s", src_url, trg_url, src_lang, trg_lang);
@@ -253,24 +266,26 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             String str_via = PUC.removeTrailingSlashes(via.toCustomString());
             String src_urls_lang = "";
             String trg_urls_lang = "";
-            Boolean rev_urls_and_langs = false;
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
                 String lang_ok = "";
+                String detected_lang = "";
                 String uri_domain = PUC.getDomain(str_uri, logger);
                 String via_domain = PUC.getDomain(str_via, logger);
 
                 // Language
                 if (getUseLanguages()) {
-                    lang_ok = PUC.isLangOk(curi, getLangPreference1(), getLangPreference2(), getOnlyReliableDetection(), logger);
+                    String lang1 = getLangPreference1();
+                    String lang2 = getLangPreference2();
+                    String[] lang_result;
+
+                    lang_result = PUC.isLangOk(curi, lang1, lang2, getOnlyReliableDetection(), logger);
+                    lang_ok = lang_result[0];
+                    detected_lang = lang_result[1];
 
                     if (!lang_ok.equals("")) {
                         // via doc lang detected
-
-                        String lang1 = getLangPreference1();
-                        String lang2 = getLangPreference2();
-
                         if (lang_ok.equals(lang1)) {
                             src_urls_lang = lang1;
                             trg_urls_lang = lang2;
@@ -278,10 +293,9 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                         else if (lang_ok.equals(lang2)) {
                             src_urls_lang = lang2;
                             trg_urls_lang = lang1;
-                            rev_urls_and_langs = true;
                         }
                         else {
-                            logger.log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | detected_lang: %s | %s | %s", lang1, lang2, lang_ok));
+                            logger.log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | lang_ok | detected_lang: %s | %s | %s | %s", lang1, lang2, lang_ok, detected_lang));
                         }
                     }
                 }
@@ -300,20 +314,13 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     }
 
                     // Metric should be a value in [0, 100]
-                    double similarity = 0.0;
+                    double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
+                    Integer exploration_value = getClassifierExplorationValue();
 
-                    if (!rev_urls_and_langs) {
-                        similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
-                    }
-                    else {
-                        // Since src lang has to be always correct, we need to swap positions
-                        similarity = requestMetric(str_uri, str_via, trg_urls_lang, src_urls_lang);
-                    }
-
-                    cost = 100 - (int)similarity + 1; // [1, 101]
+                    cost = 100 - (int)similarity + exploration_value; // [exploration_value, 100 + exploration_value]
 
                     if (logger.isLoggable(Level.FINE)) {
-                        logger.fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
+                        logger.fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
                     }
                 }
             }

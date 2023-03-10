@@ -43,9 +43,9 @@ public class PUC {
         return str_content;
     }
 
-    public static String isLangOk(CrawlURI curi, String lang1, String lang2, Boolean only_reliable, Logger logger) {
+    public static String[] isLangOk(CrawlURI curi, String lang1, String lang2, Boolean only_reliable, Logger logger) {
         if (lang1.equals("") || lang2.equals("")) {
-            return "";
+            return new String[]{"", ""};
         }
 
         String file_content = PUC.getContent(curi, logger);
@@ -54,19 +54,16 @@ public class PUC {
         String best_lang_code = lang_result.getLanguageCode();
 
         if (logger.isLoggable(Level.FINE)) {
-            logger.fine(String.format("lang<tab>reliable<tab>via: %s\t%s", is_reliable, best_lang_code, curi.getVia().toCustomString()));
+            logger.fine(String.format("lang<tab>reliable<tab>via: %s\t%s\t%s", best_lang_code, is_reliable, curi.getVia().toCustomString()));
         }
 
         if ((only_reliable && is_reliable) || !only_reliable) {
-            if (best_lang_code.equals(lang1)) {
-                return lang1;
-            }
-            else if (best_lang_code.equals(lang2)) {
-                return lang2;
+            if (best_lang_code.equals(lang1) || best_lang_code.equals(lang2)) {
+                return new String[]{best_lang_code, best_lang_code};
             }
         }
 
-        return "";
+        return new String[]{"", best_lang_code};
     }
 
     public static String sendPOST(String url, String params, String user_agent) throws IOException {

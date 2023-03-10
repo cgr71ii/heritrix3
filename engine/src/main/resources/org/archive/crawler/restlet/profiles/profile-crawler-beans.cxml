@@ -134,6 +134,10 @@ http://example.example/example
   <!-- <property name="logToFile" value="false" /> -->
   <property name="rules">
    <list>
+    <!-- If you want a TLD crawling, use "AcceptDecideRule" instead of "RejectDecideRule"
+          and remove "acceptSurts" bean. The current followed strategy only crawls
+          in the domains of the provided seeds
+     -->
     <!-- Begin by REJECTing all... -->
     <bean class="org.archive.modules.deciderules.RejectDecideRule" />
     <!-- ...then ACCEPT those within configured/seed-implied SURT prefixes... -->
