@@ -123,20 +123,26 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         UURI via = curi.getVia();
         String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
         int cost = 101;
-        String uri_file = "";
         String lang_preference = getLangPreference();
         String[] langs_preference = lang_preference.split("[|]");
         int uri_resource_idx = str_uri.lastIndexOf("/");
+        String uri_resource = uri_resource_idx >= 0 ? str_uri.substring(uri_resource_idx + 1) : "";
 
-        if (uri_resource_idx >= 0) {
-            uri_file = str_uri.substring(uri_resource_idx + 1);
+        if (uri_resource.equals("robots.txt")) {
+            return 1;
         }
 
-        if (uri_file.equals("robots.txt")){
-            cost = 1;
-        }
-        else if (via != null) {
+        if (via != null) {
             String str_via = PUC.removeTrailingSlashes(via.toCustomString());
+            int via_resource_idx = str_via.lastIndexOf("/");
+            String via_resource = via_resource_idx >= 0 ? str_via.substring(via_resource_idx + 1) : "";
+
+            if (via_resource.equals("robots.txt")) {
+                return 1;
+            }
+            if (str_via.equals(str_uri)) {
+                return 110;
+            }
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {

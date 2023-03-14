@@ -115,10 +115,6 @@ public class PUC {
             return authority;
         }
         catch (Exception e) {
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine("uri=" + uri);
-            }
-
             // Try to recover using regex
             if (uri.startsWith("http://") || uri.startsWith("https://")) {
                 String[] authority_parts = uri.split("/");

@@ -252,20 +252,26 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         UURI via = curi.getVia();
         String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
         int cost = 101;
-        String uri_file = "";
         int uri_resource_idx = str_uri.lastIndexOf("/");
+        String uri_resource = uri_resource_idx >= 0 ? str_uri.substring(uri_resource_idx + 1) : "";
 
-        if (uri_resource_idx >= 0) {
-            uri_file = str_uri.substring(uri_resource_idx + 1);
+        if (uri_resource.equals("robots.txt")) {
+            return 1;
         }
 
-        if (uri_file.equals("robots.txt")){
-            cost = 1;
-        }
-        else if (via != null) {
+        if (via != null) {
             String str_via = PUC.removeTrailingSlashes(via.toCustomString());
             String src_urls_lang = "";
             String trg_urls_lang = "";
+            int via_resource_idx = str_via.lastIndexOf("/");
+            String via_resource = via_resource_idx >= 0 ? str_via.substring(via_resource_idx + 1) : "";
+
+            if (via_resource.equals("robots.txt")) {
+                return 1;
+            }
+            if (str_via.equals(str_uri)) {
+                return 110;
+            }
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
@@ -317,7 +323,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
                     Integer exploration_value = getClassifierExplorationValue();
 
-                    cost = 100 - (int)similarity + exploration_value; // [exploration_value, 100 + exploration_value]
+                    cost = 100 - (int)(similarity + 0.5) + exploration_value; // [exploration_value, 100 + exploration_value]
 
                     if (logger.isLoggable(Level.FINE)) {
                         logger.fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
