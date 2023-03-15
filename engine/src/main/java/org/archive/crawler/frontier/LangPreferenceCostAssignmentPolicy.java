@@ -55,12 +55,21 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     {
+        setApplyOnlyToHTML(true);
         setSameDomainReward(0.0);
         setLangPreference("en|fr");
         setUseOnlyMainLang(true);
         setUseCoveredText(true);
         setOnlyReliableDetection(true);
         setLoggerFine(false);
+    }
+
+    public Boolean GetApplyOnlyToHTML() {
+        return (Boolean) kp.get("applyOnlyToHTML");
+    }
+
+    public void setApplyOnlyToHTML(Boolean apply_only_to_html) {
+        kp.put("applyOnlyToHTML", apply_only_to_html);
     }
 
     public Double getSameDomainReward() {
@@ -128,112 +137,119 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         int uri_resource_idx = str_uri.lastIndexOf("/");
         String uri_resource = uri_resource_idx >= 0 ? str_uri.substring(uri_resource_idx + 1) : "";
 
-        if (uri_resource.equals("robots.txt")) {
+        if (uri_resource.equals("robots.txt") || str_uri.startsWith("dns:")) {
+            return 1;
+        }
+        if (via == null) {
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+            }
+
             return 1;
         }
 
-        if (via != null) {
-            String str_via = PUC.removeTrailingSlashes(via.toCustomString());
-            int via_resource_idx = str_via.lastIndexOf("/");
-            String via_resource = via_resource_idx >= 0 ? str_via.substring(via_resource_idx + 1) : "";
+        String str_via = PUC.removeTrailingSlashes(via.toCustomString());
+        int via_resource_idx = str_via.lastIndexOf("/");
+        String via_resource = via_resource_idx >= 0 ? str_via.substring(via_resource_idx + 1) : "";
 
-            if (via_resource.equals("robots.txt")) {
-                return 1;
-            }
-            if (str_via.equals(str_uri)) {
-                return 110;
-            }
+        if (via_resource.equals("robots.txt") || str_via.startsWith("dns:")) {
+            return 1;
+        }
+        if (str_via.equals(str_uri)) {
+            return 110;
+        }
+        if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
+            (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
+            logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
 
-            if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
-                (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
-                String uri_domain = PUC.getDomain(str_uri, logger);
-                String via_domain = PUC.getDomain(str_via, logger);
-                String str_via_content = PUC.getContent(curi, logger);
-                Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
-                boolean is_reliable = lang_result.isReliable();
+            return 150;
+        }
+        if (GetApplyOnlyToHTML()) {
+            CrawlURI via_curi = curi.getFullVia();
 
-                if ((getOnlyReliableDetection() && is_reliable) || !getOnlyReliableDetection()) {
-                    String detected_langs = lang_result.toJSON();
-                    JSONObject obj = new JSONObject(detected_langs);
-                    Double text_covered_perc = null;
-
-                    try {
-                        JSONArray langs = obj.getJSONArray("languages");
-                        String[] lang_codes = new String[langs.length()];
-                        String[] text_covered_langs = new String[langs.length()];
-
-                        for (int i = 0; i < langs.length(); i++) {
-                            JSONObject lang_json = langs.getJSONObject(i);
-                            String lang_code = lang_json.getString("code");
-                            Double text_covered = lang_json.getDouble("text-covered") * 100.0;
-
-                            if (text_covered_perc == null && Arrays.asList(langs_preference).contains(lang_code)) {
-                                // Only first detected languaged will be processed
-
-                                if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
-                                    if (getUseCoveredText()) {
-                                        text_covered_perc = text_covered;
-                                    }
-                                    else {
-                                        text_covered_perc = 100.1; // It doesn't matter the specific result but that all have the same value
-                                    }
-                                }
-                            }
-
-                            lang_codes[i] = lang_code;
-                            text_covered_langs[i] = text_covered.toString();
-                        }
-
-                        if (logger.isLoggable(Level.FINE)) {
-                            logger.fine(String.format("langs | text_covered | via -> uri: %s | %s | %s -> %s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
-                        }
-                    } catch (JSONException e) {
-                        logger.log(Level.WARNING, String.format("JSON exception (unexpected): %s -> %s", str_via, str_uri), e);
-                    }
-
-                    if (text_covered_perc == null) {
-                        // Target langs not detected
-                        cost = 110;
-                    }
-                    else {
-                        // Metric should be a value in [0, 100]
-                        double similarity = text_covered_perc; // 0.0, 100.1 or text_covered
-
-                        if (uri_domain.equals(via_domain)) {
-                            similarity += getSameDomainReward();
-                        }
-
-                        if (similarity > 100.0) {
-                            similarity = 100.0;
-                        }
-
-                        cost = 100 - (int)similarity + 1; // [1, 101]
-
-                        if (logger.isLoggable(Level.FINE)) {
-                            logger.fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
-                        }
-                    }
+            // We apply to via_curi because is the document we are going to process (curi hasn't been downloaded yet)
+            if (!via_curi.getContentType().equals("text/html")) {
+                // The content is not HTML
+                if (logger.isLoggable(Level.FINE)) {
+                    logger.fine(String.format("Content-Type is not HTML (via uri | via content-type): %s | %s", str_via, via_curi.getContentType()));
                 }
-                else if (logger.isLoggable(Level.FINE)) {
-                    cost = 110;
 
-                    logger.fine(String.format("reliable | via -> uri: %s | %s -> %s", is_reliable, str_via, str_uri));
-                }
-            }
-            else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
-                cost = 1;
-            }
-            else {
-                cost = 150;
-
-                logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
+                return 100;
             }
         }
-        else {
-            cost = 1;
+
+        String uri_domain = PUC.getDomain(str_uri, logger);
+        String via_domain = PUC.getDomain(str_via, logger);
+        String str_via_content = PUC.getContent(curi, logger);
+        Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
+        boolean is_reliable = lang_result.isReliable();
+
+        if (!(getOnlyReliableDetection() && is_reliable) && getOnlyReliableDetection()) {
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("reliable | via -> uri: %s | %s -> %s", is_reliable, str_via, str_uri));
+            }
+
+            return 110;
+        }
+
+        String detected_langs = lang_result.toJSON();
+        JSONObject obj = new JSONObject(detected_langs);
+        Double text_covered_perc = null;
+
+        try {
+            JSONArray langs = obj.getJSONArray("languages");
+            String[] lang_codes = new String[langs.length()];
+            String[] text_covered_langs = new String[langs.length()];
+
+            for (int i = 0; i < langs.length(); i++) {
+                JSONObject lang_json = langs.getJSONObject(i);
+                String lang_code = lang_json.getString("code");
+                Double text_covered = lang_json.getDouble("text-covered") * 100.0;
+
+                if (text_covered_perc == null && Arrays.asList(langs_preference).contains(lang_code)) {
+                    // Only first detected languaged will be processed
+
+                    if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
+                        if (getUseCoveredText()) {
+                            text_covered_perc = text_covered;
+                        }
+                        else {
+                            text_covered_perc = 100.1; // It doesn't matter the specific result but that all have the same value
+                        }
+                    }
+                }
+
+                lang_codes[i] = lang_code;
+                text_covered_langs[i] = text_covered.toString();
+            }
 
             if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+                logger.fine(String.format("langs | text_covered | via -> uri: %s | %s | %s -> %s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
+            }
+        } catch (JSONException e) {
+            logger.log(Level.WARNING, String.format("JSON exception (unexpected): %s -> %s", str_via, str_uri), e);
+        }
+
+        if (text_covered_perc == null) {
+            // Target langs not detected
+            cost = 110;
+        }
+        else {
+            // Metric should be a value in [0, 100]
+            double similarity = text_covered_perc; // 0.0, 100.1 or text_covered
+
+            if (uri_domain.equals(via_domain)) {
+                similarity += getSameDomainReward();
+            }
+
+            if (similarity > 100.0) {
+                similarity = 100.0;
+            }
+
+            cost = 100 - (int)similarity + 1; // [1, 101]
+
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
             }
         }
 

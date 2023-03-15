@@ -67,6 +67,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     */
 
     {
+        setApplyOnlyToHTML(true);
         setClassifierExplorationValue(1);
         setLangPreference1("");
         setLangPreference2("");
@@ -87,6 +88,14 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             }
         }
         */
+    }
+
+    public Boolean GetApplyOnlyToHTML() {
+        return (Boolean) kp.get("applyOnlyToHTML");
+    }
+
+    public void setApplyOnlyToHTML(Boolean apply_only_to_html) {
+        kp.put("applyOnlyToHTML", apply_only_to_html);
     }
 
     public Integer getClassifierExplorationValue() {
@@ -255,95 +264,101 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         int uri_resource_idx = str_uri.lastIndexOf("/");
         String uri_resource = uri_resource_idx >= 0 ? str_uri.substring(uri_resource_idx + 1) : "";
 
-        if (uri_resource.equals("robots.txt")) {
+        if (uri_resource.equals("robots.txt") || str_uri.startsWith("dns:")) {
+            return 1;
+        }
+        if (via == null) {
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+            }
+
             return 1;
         }
 
-        if (via != null) {
-            String str_via = PUC.removeTrailingSlashes(via.toCustomString());
-            String src_urls_lang = "";
-            String trg_urls_lang = "";
-            int via_resource_idx = str_via.lastIndexOf("/");
-            String via_resource = via_resource_idx >= 0 ? str_via.substring(via_resource_idx + 1) : "";
+        String str_via = PUC.removeTrailingSlashes(via.toCustomString());
+        String src_urls_lang = "";
+        String trg_urls_lang = "";
+        int via_resource_idx = str_via.lastIndexOf("/");
+        String via_resource = via_resource_idx >= 0 ? str_via.substring(via_resource_idx + 1) : "";
 
-            if (via_resource.equals("robots.txt")) {
-                return 1;
-            }
-            if (str_via.equals(str_uri)) {
-                return 110;
-            }
+        if (via_resource.equals("robots.txt") || str_via.startsWith("dns:")) {
+            return 1;
+        }
+        if (str_via.equals(str_uri)) {
+            return 110;
+        }
+        if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
+            (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
+            logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
 
-            if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
-                (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
-                String lang_ok = "";
-                String detected_lang = "";
-                String uri_domain = PUC.getDomain(str_uri, logger);
-                String via_domain = PUC.getDomain(str_via, logger);
+            return 150;
+        }
+        if (GetApplyOnlyToHTML()) {
+            CrawlURI via_curi = curi.getFullVia();
 
-                // Language
-                if (getUseLanguages()) {
-                    String lang1 = getLangPreference1();
-                    String lang2 = getLangPreference2();
-                    String[] lang_result;
-
-                    lang_result = PUC.isLangOk(curi, lang1, lang2, getOnlyReliableDetection(), logger);
-                    lang_ok = lang_result[0];
-                    detected_lang = lang_result[1];
-
-                    if (!lang_ok.equals("")) {
-                        // via doc lang detected
-                        if (lang_ok.equals(lang1)) {
-                            src_urls_lang = lang1;
-                            trg_urls_lang = lang2;
-                        }
-                        else if (lang_ok.equals(lang2)) {
-                            src_urls_lang = lang2;
-                            trg_urls_lang = lang1;
-                        }
-                        else {
-                            logger.log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | lang_ok | detected_lang: %s | %s | %s | %s", lang1, lang2, lang_ok, detected_lang));
-                        }
-                    }
+            // We want via and current URI documents to be HTML
+            if (!curi.getContentType().equals("text/html") || !via_curi.getContentType().equals("text/html")) {
+                // The content is not HTML
+                if (logger.isLoggable(Level.FINE)) {
+                    logger.fine(String.format("Content-Type is not HTML: uri (content-type) -> via uri (via content-type): %s (%s) | %s (%s)", str_uri, curi.getContentType(), str_via, via_curi.getContentType()));
                 }
 
-                if (getUseLanguages() && lang_ok.equals("")) {
-                    cost = 110;
-                }
-                else if (getSameDomain() && !uri_domain.equals(via_domain)) {
-                    cost = 1; // We want to explore
-                }
-                // Apply classifier (we don't want to evaluate docs which are not in the selected language or domain)
-                else {
-                    if (getUrlsBase64()) {
-                        str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes());
-                        str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
-                    }
-
-                    // Metric should be a value in [0, 100]
-                    double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
-                    Integer exploration_value = getClassifierExplorationValue();
-
-                    cost = 100 - (int)(similarity + 0.5) + exploration_value; // [exploration_value, 100 + exploration_value]
-
-                    if (logger.isLoggable(Level.FINE)) {
-                        logger.fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
-                    }
-                }
-            }
-            else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
-                cost = 1;
-            }
-            else {
-                cost = 150;
-
-                logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
+                return 100;
             }
         }
+
+        String lang_ok = "";
+        String detected_lang = "";
+        String uri_domain = PUC.getDomain(str_uri, logger);
+        String via_domain = PUC.getDomain(str_via, logger);
+
+        // Language
+        if (getUseLanguages()) {
+            String lang1 = getLangPreference1();
+            String lang2 = getLangPreference2();
+            String[] lang_result;
+
+            lang_result = PUC.isLangOk(curi, lang1, lang2, getOnlyReliableDetection(), logger);
+            lang_ok = lang_result[0];
+            detected_lang = lang_result[1];
+
+            if (!lang_ok.equals("")) {
+                // via doc lang detected
+                if (lang_ok.equals(lang1)) {
+                    src_urls_lang = lang1;
+                    trg_urls_lang = lang2;
+                }
+                else if (lang_ok.equals(lang2)) {
+                    src_urls_lang = lang2;
+                    trg_urls_lang = lang1;
+                }
+                else {
+                    logger.log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | lang_ok | detected_lang: %s | %s | %s | %s", lang1, lang2, lang_ok, detected_lang));
+                }
+            }
+        }
+
+        if (getUseLanguages() && lang_ok.equals("")) {
+            cost = 110;
+        }
+        else if (getSameDomain() && !uri_domain.equals(via_domain)) {
+            cost = 1; // We want to explore
+        }
+        // Apply classifier (we don't want to evaluate docs which are not in the selected language or domain)
         else {
-            cost = 1;
+            if (getUrlsBase64()) {
+                str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes());
+                str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
+            }
+
+            // Metric should be a value in [0, 100]
+            double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
+            Integer exploration_value = getClassifierExplorationValue();
+
+            cost = 100 - (int)(similarity + 0.5) + exploration_value; // [exploration_value, 100 + exploration_value]
 
             if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+                logger.fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
             }
         }
 

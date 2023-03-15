@@ -262,7 +262,8 @@ http://example.example/example
         </map>
        </property> 
       </bean> -->
- <bean id="onlyText" class="org.archive.modules.deciderules.DecideRuleSequence">
+
+ <bean id="onlyTextDownload" class="org.archive.modules.deciderules.DecideRuleSequence">
   <!-- Produce log file with ACCEPTed and REJECTed URIs. The log filename will be based on the bean id -->
   <property name="logToFile" value="true" />
   <property name="rules">
@@ -274,16 +275,37 @@ http://example.example/example
     </bean>
     <bean class="org.archive.modules.deciderules.ContentTypeNotMatchesRegexDecideRule"> <!-- Reject non-text files -->
      <property name="decision" value="REJECT" />
-     <property name="regex" value="^text/.*$|^application/javascript.*$" />
+     <property name="regex" value="^text/.*$|^application/javascript.*$" /> <!-- Some files will not be downloaded and you might want them (e.g. PDFs) -->
     </bean>
     <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" /> <!-- Be sure that prerequisites are satisfied -->
    </list>
   </property>
  </bean>
+
+ <bean id="onlyTextStore" class="org.archive.modules.deciderules.DecideRuleSequence">
+  <!-- Produce log file with ACCEPTed and REJECTed URIs. The log filename will be based on the bean id -->
+  <property name="logToFile" value="true" />
+  <property name="rules">
+   <list>
+    <bean class="org.archive.modules.deciderules.AcceptDecideRule" /> <!-- We accept by default and reject if needed -->
+    <bean class="org.archive.modules.deciderules.HopsPathMatchesRegexDecideRule">
+     <property name="regex" value=".*E.*" /> <!-- https://github.com/internetarchive/heritrix3/issues/453#issuecomment-1233728421 -->
+     <property name="decision" value="REJECT" />
+    </bean>
+    <bean class="org.archive.modules.deciderules.ContentTypeNotMatchesRegexDecideRule"> <!-- Reject non-text files -->
+     <property name="decision" value="REJECT" />
+     <property name="regex" value="^text/html.*$" /> <!-- Only HTML will be stored (you might want to store plain text, ODTs, PDFs, etc.) -->
+    </bean>
+    <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" /> <!-- Be sure that prerequisites are satisfied -->
+   </list>
+  </property>
+ </bean>
+
  <bean id="fetchHttp" class="org.archive.modules.fetcher.FetchHTTP">
   <!-- <property name="useHTTP11" value="false" /> -->
   <property name="maxLengthBytes" value="104857600" /> <!-- 100 MiB -->
   <!-- <property name="timeoutSeconds" value="1200" /> -->
+  <property name="timeoutSeconds" value="300" /> <!-- 5 min -->
   <!-- <property name="maxFetchKBSec" value="0" /> -->
   <!-- <property name="defaultEncoding" value="ISO-8859-1" /> -->
   <!-- <property name="shouldFetchBodyRule"> 
@@ -291,7 +313,7 @@ http://example.example/example
        </property> -->
   <property name="shouldFetchBodyRule"> 
    <!-- <bean class="org.archive.modules.deciderules.AcceptDecideRule"/> -->
-   <ref bean="onlyText" />
+   <ref bean="onlyTextDownload" />
   </property>
   <!-- <property name="soTimeoutMs" value="20000" /> -->
   <!-- <property name="sendIfModifiedSince" value="true" /> -->
@@ -406,7 +428,7 @@ http://example.example/example
   -->
   <property name="shouldProcessRule">
    <!-- ...Add scope to limit what is written to WARCs... -->
-   <ref bean="onlyText" />
+   <ref bean="onlyTextStore" />
   </property>
  </bean>
  <bean id="candidates" class="org.archive.crawler.postprocessor.CandidatesProcessor">
@@ -415,9 +437,13 @@ http://example.example/example
  </bean>
  <bean id="disposition" class="org.archive.crawler.postprocessor.DispositionProcessor">
   <!-- <property name="delayFactor" value="5.0" /> -->
+  <property name="delayFactor" value="2.0" />
   <!-- <property name="minDelayMs" value="3000" /> -->
+  <property name="minDelayMs" value="1000" /> <!-- 1 sec -->
   <!-- <property name="respectCrawlDelayUpToSeconds" value="300" /> -->
+  <property name="respectCrawlDelayUpToSeconds" value="100" />
   <!-- <property name="maxDelayMs" value="30000" /> -->
+  <property name="maxDelayMs" value="10000" /> <!-- 10 sec -->
   <!-- <property name="maxPerHostBandwidthUsageKbSec" value="0" /> -->
  </bean>
  <!-- <bean id="rescheduler" class="org.archive.crawler.postprocessor.ReschedulingProcessor">
@@ -461,8 +487,11 @@ http://example.example/example
         <bean class="org.archive.crawler.frontier.precedence.BaseQueuePrecedencePolicy" />
        </property> -->
   <!-- <property name="snoozeLongMs" value="300000" /> -->
+  <property name="snoozeLongMs" value="250000" /> <!-- 2.5 min -->
   <!-- <property name="retryDelaySeconds" value="900" /> -->
+  <property name="retryDelaySeconds" value="300" /> <!-- 5 min -->
   <!-- <property name="maxRetries" value="30" /> -->
+  <property name="maxRetries" value="3" /> <!-- It should be incresed in case of large crawls (e.g. months) -->
   <!-- <property name="recoveryLogEnabled" value="true" /> -->
   <!-- <property name="maxOutlinks" value="6000" /> -->
   <!-- <property name="extractIndependently" value="false" /> -->
