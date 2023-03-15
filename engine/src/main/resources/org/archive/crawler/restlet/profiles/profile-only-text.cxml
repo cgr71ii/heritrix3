@@ -296,7 +296,8 @@ http://example.example/example
      <property name="decision" value="REJECT" />
      <property name="regex" value="^text/html.*$" /> <!-- Only HTML will be stored (you might want to store plain text, ODTs, PDFs, etc.) -->
     </bean>
-    <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" /> <!-- Be sure that prerequisites are satisfied -->
+    <!-- <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" /> -->     <!-- You might want to enable this rule in order to have the traceback of the crawl -->
+                                                                                               <!-- Be sure that prerequisites are satisfied -->
    </list>
   </property>
  </bean>

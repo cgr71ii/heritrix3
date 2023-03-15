@@ -117,6 +117,11 @@ public class AuthorityCommonSuffixDecideRule extends PredicatedDecideRule {
 
         String authority = getAuthority(str_uri);
 
+        if (authority == null) {
+            // Error
+            return false;
+        }
+
         if ((!getDifferentSuffix() && authority.endsWith(common_suffix)) ||
             (getDifferentSuffix() && !authority.endsWith(common_suffix))) {
             if(LOGGER.isLoggable(Level.FINE)) {
