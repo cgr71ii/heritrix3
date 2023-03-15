@@ -296,11 +296,11 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         if (GetApplyOnlyToHTML()) {
             CrawlURI via_curi = curi.getFullVia();
 
-            // We want via and current URI documents to be HTML
-            if (!curi.getContentType().equals("text/html") || !via_curi.getContentType().equals("text/html")) {
+            // We want via and current URI documents to be HTML, but current URI head hasn't been downloaded yet...
+            if (!via_curi.getContentType().startsWith("text/html")) {
                 // The content is not HTML
                 if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("Content-Type is not HTML: uri (content-type) -> via uri (via content-type): %s (%s) | %s (%s)", str_uri, curi.getContentType(), str_via, via_curi.getContentType()));
+                    logger.fine(String.format("Content-Type is not HTML: via uri (via content-type): %s (%s)", str_via, via_curi.getContentType()));
                 }
 
                 return 100;

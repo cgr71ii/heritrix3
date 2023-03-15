@@ -168,7 +168,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             CrawlURI via_curi = curi.getFullVia();
 
             // We apply to via_curi because is the document we are going to process (curi hasn't been downloaded yet)
-            if (!via_curi.getContentType().equals("text/html")) {
+            if (!via_curi.getContentType().startsWith("text/html")) {
                 // The content is not HTML
                 if (logger.isLoggable(Level.FINE)) {
                     logger.fine(String.format("Content-Type is not HTML (via uri | via content-type): %s | %s", str_via, via_curi.getContentType()));
