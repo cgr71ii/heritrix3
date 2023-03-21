@@ -347,8 +347,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         // Apply classifier (we don't want to evaluate docs which are not in the selected language or domain)
         else {
             if (getUrlsBase64()) {
-                str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes());
-                str_via = Base64.getEncoder().encodeToString(str_via.getBytes());
+                str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes()).replace('+', '_');
+                str_via = Base64.getEncoder().encodeToString(str_via.getBytes()).replace('+', '_');
             }
 
             // Metric should be a value in [0, 100]
