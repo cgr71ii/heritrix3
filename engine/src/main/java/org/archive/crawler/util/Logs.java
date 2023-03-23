@@ -29,6 +29,7 @@ public enum Logs{
 	CRAWL ("crawl.log"),
     ALERTS ("alerts.log"),
 	PROGRESS_STATISTICS ("progress-statistics.log"),
+	URI_COST ("uri-cost.log"),
 	RUNTIME_ERRORS ("runtime-errors.log"),
     NONFATAL_ERRORS ("nonfatal-errors.log"),
 	URI_ERRORS ("uri-errors.log");

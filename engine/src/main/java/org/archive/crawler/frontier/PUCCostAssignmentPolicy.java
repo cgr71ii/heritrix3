@@ -20,6 +20,10 @@ package org.archive.crawler.frontier;
 
 import org.archive.crawler.util.PUC;
 
+import org.archive.crawler.reporting.CrawlerLoggerModule;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.archive.net.UURI;
 
 import org.archive.modules.CrawlURI;
@@ -47,22 +51,32 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
     private static final long serialVersionUID = 1L;
 
-    //private static final ConfigPath logFile = new ConfigPath(PUCCostAssignmentPolicy.class.getName(),"${launchId}/logs/cost_puc.log");
-    private static final Logger logger = Logger.getLogger(PUCCostAssignmentPolicy.class.getName());
-
     protected KeyedProperties kp = new KeyedProperties();
     public KeyedProperties getKeyedProperties() {
         return kp;
     }
 
+    protected CrawlerLoggerModule loggerModule;
+    public CrawlerLoggerModule getLoggerModule() {
+        return this.loggerModule;
+    }
+    @Autowired
+    public void setLoggerModule(CrawlerLoggerModule loggerModule) {
+        this.loggerModule = loggerModule;
+    }
+
+    private Logger getLogger() {
+        return loggerModule.getUriCost();
+    }
+
     /*
     private static void setupLogFile() throws IOException, SecurityException {
-        logger.setLevel(Level.INFO);
+        getLogger().setLevel(Level.INFO);
 
         GenerationFileHandler fh = GenerationFileHandler.makeNew(logFile.getFile().getAbsolutePath(), false, false);
 
-        logger.addHandler(fh);
-        logger.setUseParentHandlers(false);
+        getLogger().addHandler(fh);
+        getLogger().setUseParentHandlers(false);
     }
     */
 
@@ -83,8 +97,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         try {
             setupLogFile();
         } catch (Exception e) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.warning("couldn't setup the log file: " + e.toString());
+            if (getLogger().isLoggable(Level.WARNING)) {
+                getLogger().warning("couldn't setup the log file: " + e.toString());
             }
         }
         */
@@ -175,13 +189,6 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     }
 
     public void setLoggerFine(Boolean logger_fine) {
-        if (logger_fine) {
-            logger.setLevel(Level.FINE);
-        }
-        else {
-            logger.setLevel(Level.INFO);
-        }
-
         kp.put("loggerFine", logger_fine);
     }
 
@@ -193,29 +200,29 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             request_param = String.format("src_urls=%s&trg_urls=%s", src_url, trg_url);
 
             if (getUseLanguages()) {
-                logger.log(Level.WARNING, String.format("Src or trg is empty but languages were expected: %s %s %s %s", src_lang, trg_lang, src_url, trg_url));
+                getLogger().log(Level.WARNING, String.format("Src or trg is empty but languages were expected: %s %s %s %s", src_lang, trg_lang, src_url, trg_url));
             }
         }
         else {
             request_param = String.format("src_urls=%s&trg_urls=%s&src_urls_lang=%s&trg_urls_lang=%s", src_url, trg_url, src_lang, trg_lang);
         }
 
-        if (logger.isLoggable(Level.FINER)) {
-            logger.finer("request param: " + request_param);
+        if (getLogger().isLoggable(Level.FINER)) {
+            getLogger().finer("request param: " + request_param);
         }
 
         try {
             String request_result = PUC.sendPOST(getMetricServerUrl(), request_param, getUserAgent());
 
             if (request_result == null) {
-                logger.log(Level.WARNING, "Request result was null");
+                getLogger().log(Level.WARNING, "Request result was null");
 
                 // Set similarity to minimum value
                 result = 0.0;
             }
             else {
-                if (logger.isLoggable(Level.FINER)) {
-                    logger.finer("request result: " + request_result);
+                if (getLogger().isLoggable(Level.FINER)) {
+                    getLogger().finer("request result: " + request_result);
                 }
 
                 JSONObject obj = new JSONObject(request_result);
@@ -224,7 +231,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     JSONArray scores = obj.getJSONArray("ok");
 
                     if (scores.length() != 1) {
-                        logger.log(Level.WARNING, String.format("Unexpected length of scores: %d", scores.length()));
+                        getLogger().log(Level.WARNING, String.format("Unexpected length of scores: %d", scores.length()));
 
                         // Set similarity to minimum value
                         result = 0.0;
@@ -237,14 +244,14 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     try {
                         String error = obj.getString("err");
 
-                        logger.log(Level.WARNING, String.format("PUC error: %s", error), e);
+                        getLogger().log(Level.WARNING, String.format("PUC error: %s", error), e);
                     } catch (JSONException e2) {
-                        logger.log(Level.WARNING, "JSON exception", e2);
+                        getLogger().log(Level.WARNING, "JSON exception", e2);
                     }
                 }
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Request exception", e);
+            getLogger().log(Level.WARNING, "Request exception", e);
 
             // Set similarity to minimum value
             result = 0.0;
@@ -257,6 +264,13 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
     }
 
     public int costOf(CrawlURI curi) {
+        if (getLoggerFine()) {
+            getLogger().setLevel(Level.FINE);
+        }
+        else {
+            getLogger().setLevel(Level.INFO);
+        }
+
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
         String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
@@ -268,8 +282,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             return 1;
         }
         if (via == null) {
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+            if (getLogger().isLoggable(Level.FINE)) {
+                getLogger().fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
             }
 
             return 1;
@@ -289,7 +303,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
             (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
-            logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
+            getLogger().log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
 
             return 150;
         }
@@ -299,8 +313,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             // We want via and current URI documents to be HTML, but current URI head hasn't been downloaded yet...
             if (!via_curi.getContentType().startsWith("text/html")) {
                 // The content is not HTML
-                if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("Content-Type is not HTML: via uri (via content-type): %s (%s)", str_via, via_curi.getContentType()));
+                if (getLogger().isLoggable(Level.FINE)) {
+                    getLogger().fine(String.format("Content-Type is not HTML: via uri (via content-type): %s (%s)", str_via, via_curi.getContentType()));
                 }
 
                 return 100;
@@ -309,8 +323,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
         String lang_ok = "";
         String detected_lang = "";
-        String uri_domain = PUC.getDomain(str_uri, logger);
-        String via_domain = PUC.getDomain(str_via, logger);
+        String uri_domain = PUC.getDomain(str_uri, getLogger());
+        String via_domain = PUC.getDomain(str_via, getLogger());
 
         // Language
         if (getUseLanguages()) {
@@ -318,7 +332,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             String lang2 = getLangPreference2();
             String[] lang_result;
 
-            lang_result = PUC.isLangOk(curi, lang1, lang2, getOnlyReliableDetection(), logger);
+            lang_result = PUC.isLangOk(curi, lang1, lang2, getOnlyReliableDetection(), getLogger());
             lang_ok = lang_result[0];
             detected_lang = lang_result[1];
 
@@ -333,7 +347,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     trg_urls_lang = lang1;
                 }
                 else {
-                    logger.log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | lang_ok | detected_lang: %s | %s | %s | %s", lang1, lang2, lang_ok, detected_lang));
+                    getLogger().log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | lang_ok | detected_lang: %s | %s | %s | %s", lang1, lang2, lang_ok, detected_lang));
                 }
             }
         }
@@ -357,8 +371,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
             cost = 100 - (int)(similarity + 0.5) + exploration_value; // [exploration_value, 100 + exploration_value]
 
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
+            if (getLogger().isLoggable(Level.FINE)) {
+                getLogger().fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
             }
         }
 

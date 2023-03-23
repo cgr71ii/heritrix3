@@ -37,6 +37,7 @@ import org.archive.crawler.framework.Engine;
 import org.archive.crawler.io.NonFatalErrorFormatter;
 import org.archive.crawler.io.RuntimeErrorFormatter;
 import org.archive.crawler.io.StatisticsLogFormatter;
+import org.archive.crawler.io.UriCostLogFormatter;
 import org.archive.crawler.io.UriErrorFormatter;
 import org.archive.crawler.io.UriProcessingFormatter;
 import org.archive.crawler.util.Logs;
@@ -98,6 +99,7 @@ public class CrawlerLoggerModule
     private static final String LOGNAME_ALERTS = "alerts";
     private static final String LOGNAME_PROGRESS_STATISTICS =
         "progress-statistics";
+    private static final String LOGNAME_URI_COST = "uri-cost";
     private static final String LOGNAME_URI_ERRORS = "uri-errors";
     private static final String LOGNAME_RUNTIME_ERRORS = "runtime-errors";
     private static final String LOGNAME_NONFATAL_ERRORS = "nonfatal-errors";
@@ -128,6 +130,15 @@ public class CrawlerLoggerModule
     }
     public void setProgressLogPath(ConfigPath cp) {
         this.progressLogPath.merge(cp);
+    }
+
+    protected ConfigPath uriCostLogPath = 
+        new ConfigPath(Logs.URI_COST.getFilename(),Logs.URI_COST.getFilename()); 
+    public ConfigPath getUriCostLogPath() {
+        return uriCostLogPath;
+    }
+    public void setUriCostLogPath(ConfigPath cp) {
+        this.uriCostLogPath.merge(cp);
     }
     
     protected ConfigPath uriErrorsLogPath = 
@@ -195,6 +206,11 @@ public class CrawlerLoggerModule
     private transient Logger progressStats;
 
     /**
+     * URI cost tracker writes here at regular intervals.
+     */
+    private transient Logger uriCost;
+
+    /**
      * Record of fileHandlers established for loggers,
      * assisting file rotation.
      */
@@ -244,6 +260,7 @@ public class CrawlerLoggerModule
         uriErrors = Logger.getLogger(LOGNAME_URI_ERRORS + "." + logsPath);
         progressStats = Logger.getLogger(LOGNAME_PROGRESS_STATISTICS + "." +
             logsPath);
+        uriCost = Logger.getLogger(LOGNAME_URI_COST + "." + logsPath);
 
         this.fileHandlers = new HashMap<Logger,FileHandler>();
         setupLogFile(uriProcessing,
@@ -265,6 +282,10 @@ public class CrawlerLoggerModule
         setupLogFile(progressStats,
             getProgressLogPath().getFile().getAbsolutePath(),
             new StatisticsLogFormatter(), true);
+
+        setupLogFile(uriCost,
+            getUriCostLogPath().getFile().getAbsolutePath(),
+            new UriCostLogFormatter(), true);
 
         setupAlertLog(logsPath);
     }
@@ -418,6 +439,10 @@ public class CrawlerLoggerModule
     public Logger getUriProcessing() {
         return uriProcessing;
     }
+
+    public Logger getUriCost() {
+        return uriCost;
+    }
     
     public int getAlertCount() {
         if (atg != null) {
@@ -459,7 +484,7 @@ public class CrawlerLoggerModule
     
     public void afterPropertiesSet() throws Exception {
         ConfigPath[] paths = { 
-                crawlLogPath, alertsLogPath, progressLogPath, 
+                crawlLogPath, alertsLogPath, progressLogPath, uriCostLogPath,
                 uriErrorsLogPath, runtimeErrorsLogPath, nonfatalErrorsLogPath };
         for(ConfigPath cp : paths) {
             if(cp.getBase()==null) {

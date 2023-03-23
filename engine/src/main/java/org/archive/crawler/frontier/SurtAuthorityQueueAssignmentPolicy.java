@@ -35,6 +35,8 @@ extends URIAuthorityBasedQueueAssignmentPolicy {
     }
     
     protected String getSurtAuthority(String surt) {
+        // A URI scheme://domain.tld/path?query has a SURT form of scheme://(tld,domain,)/path?query. (https://heritrix.readthedocs.io/en/stable/glossary.html)
+        // scheme://(tld,domain,)/path?query -> return "tld,domain,"
         int indexOfOpen = surt.indexOf("://(");
         int indexOfClose = surt.indexOf(")");
         if (indexOfOpen == -1 || indexOfClose == -1
