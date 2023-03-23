@@ -112,6 +112,12 @@ public class PUC {
         try {
             String authority = (new URI(uri)).getHost();
 
+            if (authority == null) {
+                logger.warning("host is null. uri="+uri);
+
+                return "";
+            }
+
             return authority;
         }
         catch (Exception e) {

@@ -131,7 +131,8 @@ http://example.example/example
  <!-- SCOPE: rules for which discovered URIs to crawl; order is very 
       important because last decision returned other than 'NONE' wins. -->
  <bean id="scope" class="org.archive.modules.deciderules.DecideRuleSequence">
-  <!-- <property name="logToFile" value="false" /> -->
+  <!-- <property name="logToFile" value="false" /> --> <!-- It will allow you to trace the accepted URLs in logs/scope.log ; Columns:
+                                                            [timestamp] [decisive-rule-num] [decisive-rule-class] [decision] [uri] [extraInfo] -->
   <property name="rules">
    <list>
     <!-- Begin by REJECTing all... -->
@@ -265,7 +266,7 @@ http://example.example/example
 
  <bean id="onlyTextDownload" class="org.archive.modules.deciderules.DecideRuleSequence">
   <!-- Produce log file with ACCEPTed and REJECTed URIs. The log filename will be based on the bean id -->
-  <property name="logToFile" value="true" />
+  <property name="logToFile" value="false" />
   <property name="rules">
    <list>
     <bean class="org.archive.modules.deciderules.AcceptDecideRule" /> <!-- We accept by default and reject if needed -->
@@ -284,7 +285,7 @@ http://example.example/example
 
  <bean id="onlyTextStore" class="org.archive.modules.deciderules.DecideRuleSequence">
   <!-- Produce log file with ACCEPTed and REJECTed URIs. The log filename will be based on the bean id -->
-  <property name="logToFile" value="true" />
+  <property name="logToFile" value="false" />
   <property name="rules">
    <list>
     <bean class="org.archive.modules.deciderules.AcceptDecideRule" /> <!-- We accept by default and reject if needed -->
