@@ -168,6 +168,7 @@ http://example.example/example
      <!-- <property name="listLogicalOr" value="true" /> -->
      <!-- <property name="regexList">
            <list>
+            <value></value>
            </list>
           </property> -->
     </bean>

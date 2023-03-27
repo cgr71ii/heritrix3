@@ -101,6 +101,11 @@ public class PUC {
 
     public static String getDomainFromAuthority(String authority) {
         InternetDomainName idn = InternetDomainName.from(authority);
+
+        if (idn.isPublicSuffix()) {
+            return authority; // Special case: some public suffixes like s3.amazonaws.com can be both a website and a public suffix itself (https://github.com/google/guava/issues/1829)
+        }
+
         String tld = idn.publicSuffix().toString();
         String domain_and_tld = idn.topPrivateDomain().toString();
         String domain = domain_and_tld.substring(0, domain_and_tld.length() - tld.length() - 1);

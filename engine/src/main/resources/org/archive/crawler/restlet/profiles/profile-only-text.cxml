@@ -144,7 +144,7 @@ http://example.example/example
          If this rule is removed and any other is not added, SurtPrefixedDecideRule
          rule will get all seeds and only crawl inside those authorities
     -->
-	<bean class="org.archive.modules.deciderules.surt.OnDomainsDecideRule" />
+    <bean class="org.archive.modules.deciderules.surt.OnDomainsDecideRule" />
     <!-- ...but REJECT those more than a configured link-hop-count from start... -->
     <bean class="org.archive.modules.deciderules.TooManyHopsDecideRule">
      <!-- <property name="maxHops" value="20" /> -->
@@ -171,6 +171,7 @@ http://example.example/example
      <!-- <property name="listLogicalOr" value="true" /> -->
      <!-- <property name="regexList">
            <list>
+            <value></value>
            </list>
           </property> -->
     </bean>
