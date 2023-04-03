@@ -75,7 +75,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         setPriorizeSameDomain(false); // Exploration by default instead of exploitation
         setLangPreference("en|fr");
         setUseOnlyMainLang(true);
-        setUseCoveredText(true);
+        setUseCoveredText(false);
         setOnlyReliableDetection(true);
         setLoggerFine(false);
     }
