@@ -45,6 +45,8 @@ import java.util.Base64;
  * provided to a classifier through its API and uses the given
  * score as inverse cost (1 - score)
  * 
+ * Assumption: model has been trained only with URLs of the same web domain and equal or different subdomain and/or TLD
+ * 
  * @author cgr71ii
  */
 public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements HasKeyedProperties {
@@ -69,39 +71,35 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         return loggerModule.getUriCost();
     }
 
-    /*
-    private static void setupLogFile() throws IOException, SecurityException {
-        getLogger().setLevel(Level.INFO);
-
-        GenerationFileHandler fh = GenerationFileHandler.makeNew(logFile.getFile().getAbsolutePath(), false, false);
-
-        getLogger().addHandler(fh);
-        getLogger().setUseParentHandlers(false);
-    }
-    */
-
     {
+        setClassificationInsteadOfRanking(true);
+        setClassificationThreshold(50.0);
         setApplyOnlyToHTML(true);
-        setClassifierExplorationValue(1);
         setLangPreference1("");
         setLangPreference2("");
         setOnlyReliableDetection(true);
         setUseLanguages(true);
-        setSameDomain(true);
+        setPriorizeSameDomain(false); // Exploration by default instead of exploitation
         setMetricServerUrl("http://localhost:5000/inference");
         setUserAgent(String.format("heritrix: %s", PUCCostAssignmentPolicy.class.getName()));
         setUrlsBase64(true);
         setLoggerFine(false);
+    }
 
-        /*
-        try {
-            setupLogFile();
-        } catch (Exception e) {
-            if (getLogger().isLoggable(Level.WARNING)) {
-                getLogger().warning("couldn't setup the log file: " + e.toString());
-            }
-        }
-        */
+    public Boolean GetClassificationInsteadOfRanking() {
+        return (Boolean) kp.get("classificationInsteadOfRanking");
+    }
+
+    public void setClassificationInsteadOfRanking(Boolean classification) {
+        kp.put("classificationInsteadOfRanking", classification);
+    }
+
+    public Double GetClassificationThreshold() {
+        return (Double) kp.get("classificationThreshold");
+    }
+
+    public void setClassificationThreshold(Double threshold) {
+        kp.put("classificationThreshold", threshold);
     }
 
     public Boolean GetApplyOnlyToHTML() {
@@ -112,20 +110,16 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         kp.put("applyOnlyToHTML", apply_only_to_html);
     }
 
-    public Integer getClassifierExplorationValue() {
-        return (Integer) kp.get("classifierExplorationValue");
+    /*
+     * If true, exploitation of the same web domain will prevail over exploration
+     * If false, BE AWARE: we're assuming that URIs of different web domains will create a new queue in heritrix, what it happens by default
+     */
+    public Boolean getPriorizeSameDomain() {
+        return (Boolean) kp.get("priorizeSameDomain");
     }
 
-    public void setClassifierExplorationValue(Integer classifier_exploration_value) {
-        kp.put("classifierExplorationValue", classifier_exploration_value);
-    }
-
-    public Boolean getSameDomain() {
-        return (Boolean) kp.get("sameDomain");
-    }
-
-    public void setSameDomain(Boolean same_domain) {
-        kp.put("sameDomain", same_domain);
+    public void setPriorizeSameDomain(Boolean priorize_same_domain) {
+        kp.put("priorizeSameDomain", priorize_same_domain);
     }
 
     public Boolean getUseLanguages() {
@@ -277,6 +271,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         int cost = 101;
         int uri_resource_idx = str_uri.lastIndexOf("/");
         String uri_resource = uri_resource_idx >= 0 ? str_uri.substring(uri_resource_idx + 1) : "";
+        Boolean is_classification = GetClassificationInsteadOfRanking();
+        Boolean is_ranking = !is_classification;
 
         if (uri_resource.equals("robots.txt") || str_uri.startsWith("dns:")) {
             return 1;
@@ -299,13 +295,13 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             return 1;
         }
         if (str_via.equals(str_uri)) {
-            return 110;
+            return is_ranking ? 104 : 4;
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
             (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
             getLogger().log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
 
-            return 150;
+            return is_ranking ? 105 : 5;
         }
         if (GetApplyOnlyToHTML()) {
             CrawlURI via_curi = curi.getFullVia();
@@ -317,7 +313,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     getLogger().fine(String.format("Content-Type is not HTML: via uri (via content-type): %s (%s)", str_via, via_curi.getContentType()));
                 }
 
-                return 100;
+                return is_ranking ? 103 : 3;
             }
         }
 
@@ -353,27 +349,43 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
 
         if (getUseLanguages() && lang_ok.equals("")) {
-            cost = 110;
+            return is_ranking ? 102 : 2;
         }
-        else if (getSameDomain() && !uri_domain.equals(via_domain)) {
-            cost = 1; // We want to explore
+        if (getPriorizeSameDomain() && !uri_domain.equals(via_domain)) {
+            // Exploitation of the current web domain
+            return is_ranking ? 102 : 2;
         }
+        else if (!uri_domain.equals(via_domain)) {
+            // Exploration
+            // PUC hasn't seen URLs of different domains
+            return 1;
+        }
+
         // Apply classifier (we don't want to evaluate docs which are not in the selected language or domain)
+        if (getUrlsBase64()) {
+            str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes()).replace('+', '_');
+            str_via = Base64.getEncoder().encodeToString(str_via.getBytes()).replace('+', '_');
+        }
+
+        // Metric should be a value in [0, 100]
+        double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
+
+        if (is_classification) {
+            if (similarity >= GetClassificationThreshold()) {
+                similarity = 1.0;
+            }
+            else {
+                similarity = 0.0;
+            }
+
+            cost = (int)(similarity + 0.5) + 1; // {1, 2}
+        }
         else {
-            if (getUrlsBase64()) {
-                str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes()).replace('+', '_');
-                str_via = Base64.getEncoder().encodeToString(str_via.getBytes()).replace('+', '_');
-            }
+            cost = 100 - (int)(similarity + 0.5) + 1; // [1, 101]
+        }
 
-            // Metric should be a value in [0, 100]
-            double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
-            Integer exploration_value = getClassifierExplorationValue();
-
-            cost = 100 - (int)(similarity + 0.5) + exploration_value; // [exploration_value, 100 + exploration_value]
-
-            if (getLogger().isLoggable(Level.FINE)) {
-                getLogger().fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
-            }
+        if (getLogger().isLoggable(Level.FINE)) {
+            getLogger().fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
         }
 
         return cost;

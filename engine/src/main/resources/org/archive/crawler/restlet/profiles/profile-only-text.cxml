@@ -131,8 +131,8 @@ http://example.example/example
  <!-- SCOPE: rules for which discovered URIs to crawl; order is very 
       important because last decision returned other than 'NONE' wins. -->
  <bean id="scope" class="org.archive.modules.deciderules.DecideRuleSequence">
-  <!-- <property name="logToFile" value="false" /> --> <!-- It will allow you to trace the accepted URLs in logs/scope.log ; Columns:
-                                                            [timestamp] [decisive-rule-num] [decisive-rule-class] [decision] [uri] [extraInfo] -->
+  <property name="logToFile" value="true" /> <!-- It will allow you to trace the accepted URLs in logs/scope.log ; Columns:
+                                                  [timestamp] [decisive-rule-num] [decisive-rule-class] [decision] [uri] [extraInfo] -->
   <property name="rules">
    <list>
     <!-- Begin by REJECTing all... -->

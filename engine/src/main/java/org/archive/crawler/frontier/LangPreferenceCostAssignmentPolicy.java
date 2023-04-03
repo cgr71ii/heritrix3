@@ -20,6 +20,10 @@ package org.archive.crawler.frontier;
 
 import org.archive.crawler.util.PUC;
 
+import org.archive.crawler.reporting.CrawlerLoggerModule;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.archive.net.UURI;
 
 import org.archive.modules.CrawlURI;
@@ -47,7 +51,19 @@ import org.commoncrawl.langdetect.cld2.Result;
 public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy implements HasKeyedProperties {
 
     private static final long serialVersionUID = 1L;
-    private static final Logger logger = Logger.getLogger(LangPreferenceCostAssignmentPolicy.class.getName());
+
+    protected CrawlerLoggerModule loggerModule;
+    public CrawlerLoggerModule getLoggerModule() {
+        return this.loggerModule;
+    }
+    @Autowired
+    public void setLoggerModule(CrawlerLoggerModule loggerModule) {
+        this.loggerModule = loggerModule;
+    }
+
+    private Logger getLogger() {
+        return loggerModule.getUriCost();
+    }
 
     protected KeyedProperties kp = new KeyedProperties();
     public KeyedProperties getKeyedProperties() {
@@ -56,7 +72,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
 
     {
         setApplyOnlyToHTML(true);
-        setSameDomainReward(0.0);
+        setPriorizeSameDomain(false); // Exploration by default instead of exploitation
         setLangPreference("en|fr");
         setUseOnlyMainLang(true);
         setUseCoveredText(true);
@@ -72,12 +88,16 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         kp.put("applyOnlyToHTML", apply_only_to_html);
     }
 
-    public Double getSameDomainReward() {
-        return (Double) kp.get("sameDomainReward");
+    /*
+     * If true, exploitation of the same web domain will prevail over exploration
+     * If false, BE AWARE: we're assuming that URIs of different web domains will create a new queue in heritrix, what it happens by default
+     */
+    public Boolean getPriorizeSameDomain() {
+        return (Boolean) kp.get("priorizeSameDomain");
     }
 
-    public void setSameDomainReward(Double same_domain_reward) {
-        kp.put("sameDomainReward", same_domain_reward);
+    public void setPriorizeSameDomain(Boolean priorize_same_domain) {
+        kp.put("priorizeSameDomain", priorize_same_domain);
     }
 
     public Boolean getUseCoveredText() {
@@ -117,17 +137,17 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     public void setLoggerFine(Boolean logger_fine) {
-        if (logger_fine) {
-            logger.setLevel(Level.FINE);
-        }
-        else {
-            logger.setLevel(Level.INFO);
-        }
-
         kp.put("loggerFine", logger_fine);
     }
 
     public int costOf(CrawlURI curi) {
+        if (getLoggerFine()) {
+            getLogger().setLevel(Level.FINE);
+        }
+        else {
+            getLogger().setLevel(Level.INFO);
+        }
+
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
         String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
@@ -136,13 +156,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         String[] langs_preference = lang_preference.split("[|]");
         int uri_resource_idx = str_uri.lastIndexOf("/");
         String uri_resource = uri_resource_idx >= 0 ? str_uri.substring(uri_resource_idx + 1) : "";
+        Boolean use_covered_text = getUseCoveredText();
 
         if (uri_resource.equals("robots.txt") || str_uri.startsWith("dns:")) {
             return 1;
         }
         if (via == null) {
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+            if (getLogger().isLoggable(Level.FINE)) {
+                getLogger().fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
             }
 
             return 1;
@@ -156,13 +177,13 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             return 1;
         }
         if (str_via.equals(str_uri)) {
-            return 110;
+            return use_covered_text ? 104 : 4;
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
             (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
-            logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
+            getLogger().log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
 
-            return 150;
+            return use_covered_text ? 105 : 5;
         }
         if (GetApplyOnlyToHTML()) {
             CrawlURI via_curi = curi.getFullVia();
@@ -170,26 +191,28 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             // We apply to via_curi because is the document we are going to process (curi hasn't been downloaded yet)
             if (!via_curi.getContentType().startsWith("text/html")) {
                 // The content is not HTML
-                if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("Content-Type is not HTML (via uri | via content-type): %s | %s", str_via, via_curi.getContentType()));
+                if (getLogger().isLoggable(Level.FINE)) {
+                    getLogger().fine(String.format("Content-Type is not HTML (via uri | via content-type): %s | %s", str_via, via_curi.getContentType()));
                 }
 
-                return 100;
+                return use_covered_text ? 103 : 3;
             }
         }
 
-        String uri_domain = PUC.getDomain(str_uri, logger);
-        String via_domain = PUC.getDomain(str_via, logger);
-        String str_via_content = PUC.getContent(curi, logger);
+        String uri_domain = PUC.getDomain(str_uri, getLogger());
+        String via_domain = PUC.getDomain(str_via, getLogger());
+        String str_via_content = PUC.getContent(curi, getLogger());
         Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
         boolean is_reliable = lang_result.isReliable();
 
         if (!(getOnlyReliableDetection() && is_reliable) && getOnlyReliableDetection()) {
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("reliable | via -> uri: %s | %s -> %s", is_reliable, str_via, str_uri));
+            // Detected lang is not relaiable
+
+            if (getLogger().isLoggable(Level.FINE)) {
+                getLogger().fine(String.format("reliable | via -> uri: %s | %s -> %s", is_reliable, str_via, str_uri));
             }
 
-            return 110;
+            return use_covered_text ? 102 : 2;
         }
 
         String detected_langs = lang_result.toJSON();
@@ -210,11 +233,11 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                     // Only first detected languaged will be processed
 
                     if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
-                        if (getUseCoveredText()) {
+                        if (use_covered_text) {
                             text_covered_perc = text_covered;
                         }
                         else {
-                            text_covered_perc = 100.1; // It doesn't matter the specific result but that all have the same value
+                            text_covered_perc = 100.0; // The specific value MATTERS! The queue rotation will be affected
                         }
                     }
                 }
@@ -223,34 +246,34 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                 text_covered_langs[i] = text_covered.toString();
             }
 
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("langs | text_covered | via -> uri: %s | %s | %s -> %s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
+            if (getLogger().isLoggable(Level.FINE)) {
+                getLogger().fine(String.format("langs | text_covered | via -> uri: %s | %s | %s -> %s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
             }
         } catch (JSONException e) {
-            logger.log(Level.WARNING, String.format("JSON exception (unexpected): %s -> %s", str_via, str_uri), e);
+            getLogger().log(Level.WARNING, String.format("JSON exception (unexpected): %s -> %s", str_via, str_uri), e);
         }
 
         if (text_covered_perc == null) {
             // Target langs not detected
-            cost = 110;
+            return use_covered_text ? 102 : 2;
         }
-        else {
-            // Metric should be a value in [0, 100]
-            double similarity = text_covered_perc; // 0.0, 100.1 or text_covered
+        if (getPriorizeSameDomain() && !uri_domain.equals(via_domain)) {
+            // Exploitation of the current web domain
+            return use_covered_text ? 102 : 2; // Not being in the same domain it will assign the same cost that if the target languages were not detected
+        }
+        else if (!uri_domain.equals(via_domain)) {
+            // Exploration
+            return 1;
+        }
 
-            if (uri_domain.equals(via_domain)) {
-                similarity += getSameDomainReward();
-            }
+        // Check similarity based on language detection
+        // Metric should be a value in [0, 100]
+        double similarity = text_covered_perc; // [0.0, 100.0]
 
-            if (similarity > 100.0) {
-                similarity = 100.0;
-            }
+        cost = 100 - (int)(similarity + 0.5) + 1; // [1, 101]
 
-            cost = 100 - (int)similarity + 1; // [1, 101]
-
-            if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
-            }
+        if (getLogger().isLoggable(Level.FINE)) {
+            getLogger().fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
         }
 
         return cost;
