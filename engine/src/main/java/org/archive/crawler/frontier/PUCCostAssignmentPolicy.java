@@ -372,13 +372,11 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
         if (is_classification) {
             if (similarity >= GetClassificationThreshold()) {
-                similarity = 1.0;
+                cost = 1;
             }
             else {
-                similarity = 0.0;
+                cost = 2;
             }
-
-            cost = (int)(similarity + 0.5) + 1; // {1, 2}
         }
         else {
             cost = 100 - (int)(similarity + 0.5) + 1; // [1, 101]

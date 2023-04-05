@@ -272,12 +272,12 @@ http://example.example/example
    <list>
     <bean class="org.archive.modules.deciderules.AcceptDecideRule" /> <!-- We accept by default and reject if needed -->
     <bean class="org.archive.modules.deciderules.HopsPathMatchesRegexDecideRule">
-     <property name="regex" value=".*E.*" /> <!-- https://github.com/internetarchive/heritrix3/issues/453#issuecomment-1233728421 -->
+     <property name="regex" value=".*[EX].*" /> <!-- https://github.com/internetarchive/heritrix3/issues/453#issuecomment-1233728421 -->
      <property name="decision" value="REJECT" />
     </bean>
     <bean class="org.archive.modules.deciderules.ContentTypeNotMatchesRegexDecideRule"> <!-- Reject non-text files -->
      <property name="decision" value="REJECT" />
-     <property name="regex" value="^text/.*$|^application/javascript.*$" /> <!-- Some files will not be downloaded and you might want them (e.g. PDFs) -->
+     <property name="regex" value="^text/.*$" /> <!-- Some files will not be downloaded and you might want them (e.g. PDFs) -->
     </bean>
     <bean class="org.archive.modules.deciderules.PrerequisiteAcceptDecideRule" /> <!-- Be sure that prerequisites are satisfied -->
    </list>
@@ -291,7 +291,7 @@ http://example.example/example
    <list>
     <bean class="org.archive.modules.deciderules.AcceptDecideRule" /> <!-- We accept by default and reject if needed -->
     <bean class="org.archive.modules.deciderules.HopsPathMatchesRegexDecideRule">
-     <property name="regex" value=".*E.*" /> <!-- https://github.com/internetarchive/heritrix3/issues/453#issuecomment-1233728421 -->
+     <property name="regex" value=".*[EX].*" /> <!-- https://github.com/internetarchive/heritrix3/issues/453#issuecomment-1233728421 -->
      <property name="decision" value="REJECT" />
     </bean>
     <bean class="org.archive.modules.deciderules.ContentTypeNotMatchesRegexDecideRule"> <!-- Reject non-text files -->
@@ -351,6 +351,8 @@ http://example.example/example
  
  <bean id="extractorHtml" class="org.archive.modules.extractor.ExtractorHTML">
   <!-- <property name="extractJavascript" value="true" /> -->
+  <property name="extractJavascript" value="false" /> <!-- https://github.com/internetarchive/heritrix3/discussions/508#discussioncomment-3767350
+                                                           https://github.com/internetarchive/heritrix3/issues/225#issuecomment-678070220 -->
   <!-- <property name="extractValueAttributes" value="true" /> -->
   <!-- <property name="ignoreFormActionUrls" value="false" /> -->
   <!-- <property name="extractOnlyFormGets" value="true" /> -->
@@ -390,7 +392,7 @@ http://example.example/example
     <!-- ...extract outlinks from CSS content... -->
     <ref bean="extractorCss"/>
     <!-- ...extract outlinks from Javascript content... -->
-    <ref bean="extractorJs"/>
+    <!-- <ref bean="extractorJs"/> -->
     <!-- ...extract outlinks from Flash content... -->
     <ref bean="extractorSwf"/>
    </list>

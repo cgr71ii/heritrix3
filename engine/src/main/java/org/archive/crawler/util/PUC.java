@@ -105,6 +105,12 @@ public class PUC {
         if (idn.isPublicSuffix()) {
             return authority; // Special case: some public suffixes like s3.amazonaws.com can be both a website and a public suffix itself (https://github.com/google/guava/issues/1829)
         }
+        /*
+        else if (idn.publicSuffix() == null) {
+            // What should we do?
+            return "";
+        }
+        */
 
         String tld = idn.publicSuffix().toString();
         String domain_and_tld = idn.topPrivateDomain().toString();
