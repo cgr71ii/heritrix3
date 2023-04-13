@@ -278,11 +278,14 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             return 1;
         }
         if (via == null) {
+            cost = 1;
+
             if (getLogger().isLoggable(Level.FINE)) {
-                getLogger().fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+                // Format: cost <tab> uri
+                getLogger().fine(String.format("via is null\t%d\t%s", cost, str_uri));
             }
 
-            return 1;
+            return cost;
         }
 
         String str_via = PUC.removeTrailingSlashes(via.toCustomString());
@@ -299,7 +302,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
             (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
-            getLogger().log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
+            // Format: via <tab> uri
+            getLogger().log(Level.WARNING, String.format("Unexpected URI scheme\t%s\t%s", str_via, str_uri));
 
             return is_ranking ? 105 : 5;
         }
@@ -310,7 +314,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             if (!via_curi.getContentType().startsWith("text/html")) {
                 // The content is not HTML
                 if (getLogger().isLoggable(Level.FINE)) {
-                    getLogger().fine(String.format("Content-Type is not HTML: via uri (via content-type): %s (%s)", str_via, via_curi.getContentType()));
+                    // Format: via <tab> via content-type
+                    getLogger().fine(String.format("Content-Type is not HTML\t%s\t%s", str_via, via_curi.getContentType()));
                 }
 
                 return is_ranking ? 103 : 3;
@@ -343,7 +348,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     trg_urls_lang = lang1;
                 }
                 else {
-                    getLogger().log(Level.WARNING, String.format("Unexpected languages mismatch: lang1 | lang2 | lang_ok | detected_lang: %s | %s | %s | %s", lang1, lang2, lang_ok, detected_lang));
+                    // Format: lang1 <tab> lang2 <tab> lang_ok <tab> detected_lang
+                    getLogger().log(Level.WARNING, String.format("Unexpected languages mismatch\t%s\t%s\t%s\t%s", lang1, lang2, lang_ok, detected_lang));
                 }
             }
         }
@@ -370,6 +376,11 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         // Metric should be a value in [0, 100]
         double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
 
+        if (getUrlsBase64()) {
+            str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes()).replace('_', '+');
+            str_via = Base64.getEncoder().encodeToString(str_via.getBytes()).replace('_', '+');
+        }
+
         if (is_classification) {
             if (similarity >= GetClassificationThreshold()) {
                 cost = 1;
@@ -383,7 +394,8 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
 
         if (getLogger().isLoggable(Level.FINE)) {
-            getLogger().fine(String.format("cost | similarity | via (detected lang) -> uri | src_lang - trg_lang: %d | %f | %s (%s) -> %s | %s - %s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
+            // Format: cost <tab> similarity <tab> via <tab> via detected lang <tab> uri <tab> src_lang <tab> trg_lang
+            getLogger().fine(String.format("ok\t%d\t%f\t%s\t%s\t%s\t%s\t%s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
         }
 
         return cost;

@@ -163,7 +163,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         }
         if (via == null) {
             if (getLogger().isLoggable(Level.FINE)) {
-                getLogger().fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+                // Format: cost <tab> uri
+                getLogger().fine(String.format("via is null\t%d\t%s", cost, str_uri));
             }
 
             return 1;
@@ -181,7 +182,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
             (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
-            getLogger().log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
+            // Format: via <tab> uri
+            getLogger().log(Level.WARNING, String.format("Unexpected URI scheme\t%s\t%s", str_via, str_uri));
 
             return use_covered_text ? 105 : 5;
         }
@@ -192,7 +194,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             if (!via_curi.getContentType().startsWith("text/html")) {
                 // The content is not HTML
                 if (getLogger().isLoggable(Level.FINE)) {
-                    getLogger().fine(String.format("Content-Type is not HTML (via uri | via content-type): %s | %s", str_via, via_curi.getContentType()));
+                    // Format: via <tab> via content-type
+                    getLogger().fine(String.format("Content-Type is not HTML\t%s\t%s", str_via, via_curi.getContentType()));
                 }
 
                 return use_covered_text ? 103 : 3;
@@ -209,7 +212,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             // Detected lang is not relaiable
 
             if (getLogger().isLoggable(Level.FINE)) {
-                getLogger().fine(String.format("reliable | via -> uri: %s | %s -> %s", is_reliable, str_via, str_uri));
+                // Format: reliable <tab> via <tab> uri
+                getLogger().fine(String.format("reliable\t%s\t%s\t%s", is_reliable, str_via, str_uri));
             }
 
             return use_covered_text ? 102 : 2;
@@ -247,10 +251,12 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             }
 
             if (getLogger().isLoggable(Level.FINE)) {
-                getLogger().fine(String.format("langs | text_covered | via -> uri: %s | %s | %s -> %s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
+                // Format: langs <tab> text_covered <tab> via <tab> uri
+                getLogger().fine(String.format("all detected langs\t%s\t%s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
             }
         } catch (JSONException e) {
-            getLogger().log(Level.WARNING, String.format("JSON exception (unexpected): %s -> %s", str_via, str_uri), e);
+            // Format: via <tab> uri
+            getLogger().log(Level.WARNING, String.format("JSON exception (unexpected)\t%s\t%s", str_via, str_uri), e);
         }
 
         if (text_covered_perc == null) {
@@ -273,7 +279,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         cost = 100 - (int)(similarity + 0.5) + 1; // [1, 101]
 
         if (getLogger().isLoggable(Level.FINE)) {
-            getLogger().fine(String.format("cost | similarity | via -> uri: %d | %f | %s -> %s", cost, similarity, str_via, str_uri));
+            // Format: cost <tab> similarity <tab> via <tab> uri
+            getLogger().fine(String.format("ok\t%d\t%f\t%s\t%s", cost, similarity, str_via, str_uri));
         }
 
         return cost;
