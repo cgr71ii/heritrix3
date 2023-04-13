@@ -267,7 +267,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
-        String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
+        String str_uri = PUC.normalizeURL(uri.toCustomString());
         int cost = 101;
         int uri_resource_idx = str_uri.lastIndexOf("/");
         String uri_resource = uri_resource_idx >= 0 ? str_uri.substring(uri_resource_idx + 1) : "";
@@ -288,7 +288,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             return cost;
         }
 
-        String str_via = PUC.removeTrailingSlashes(via.toCustomString());
+        String str_via = PUC.normalizeURL(via.toCustomString());
         String src_urls_lang = "";
         String trg_urls_lang = "";
         int via_resource_idx = str_via.lastIndexOf("/");
@@ -297,7 +297,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         if (via_resource.equals("robots.txt") || str_via.startsWith("dns:")) {
             return 1;
         }
-        if (str_via.equals(str_uri)) {
+        if (str_via.equals(str_uri) || via_resource.equals("favicon.ico") || uri_resource.equals("favicon.ico")) {
             return is_ranking ? 104 : 4;
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
@@ -376,11 +376,6 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         // Metric should be a value in [0, 100]
         double similarity = requestMetric(str_via, str_uri, src_urls_lang, trg_urls_lang);
 
-        if (getUrlsBase64()) {
-            str_uri = Base64.getEncoder().encodeToString(str_uri.getBytes()).replace('_', '+');
-            str_via = Base64.getEncoder().encodeToString(str_via.getBytes()).replace('_', '+');
-        }
-
         if (is_classification) {
             if (similarity >= GetClassificationThreshold()) {
                 cost = 1;
@@ -395,6 +390,12 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
         if (getLogger().isLoggable(Level.FINE)) {
             // Format: cost <tab> similarity <tab> via <tab> via detected lang <tab> uri <tab> src_lang <tab> trg_lang
+
+            if (getUrlsBase64()) {
+                str_uri = new String(Base64.getDecoder().decode(str_uri.replace('_', '+')));
+                str_via = new String(Base64.getDecoder().decode(str_via.replace('_', '+')));
+            }
+
             getLogger().fine(String.format("ok\t%d\t%f\t%s\t%s\t%s\t%s\t%s", cost, similarity, str_via, detected_lang, str_uri, src_urls_lang, trg_urls_lang));
         }
 

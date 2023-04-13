@@ -150,7 +150,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
 
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
-        String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
+        String str_uri = PUC.normalizeURL(uri.toCustomString());
         int cost = 101;
         String lang_preference = getLangPreference();
         String[] langs_preference = lang_preference.split("[|]");
@@ -170,14 +170,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             return 1;
         }
 
-        String str_via = PUC.removeTrailingSlashes(via.toCustomString());
+        String str_via = PUC.normalizeURL(via.toCustomString());
         int via_resource_idx = str_via.lastIndexOf("/");
         String via_resource = via_resource_idx >= 0 ? str_via.substring(via_resource_idx + 1) : "";
 
         if (via_resource.equals("robots.txt") || str_via.startsWith("dns:")) {
             return 1;
         }
-        if (str_via.equals(str_uri)) {
+        if (str_via.equals(str_uri) || via_resource.equals("favicon.ico") || uri_resource.equals("favicon.ico")) {
             return use_covered_text ? 104 : 4;
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||

@@ -27,8 +27,12 @@ public class PUC {
 
     public static String getContent(CrawlURI curi, Logger logger) {
         String str_content = "";
+        Boolean input_stream_opened = false;
+        InputStream stream = null;
 
-        try (InputStream stream = curi.getFullVia().getRecorder().getContentReplayInputStream()) {
+        try {
+            stream = curi.getFullVia().getRecorder().getContentReplayInputStream();
+            input_stream_opened = true;
             str_content = new BufferedReader(
                 new InputStreamReader(stream, StandardCharsets.UTF_8))
                     .lines()
@@ -37,6 +41,16 @@ public class PUC {
         catch (Exception e) {
             if (logger.isLoggable(Level.WARNING)) {
                 logger.warning("stream exception: " + e.toString());
+            }
+        }
+
+        if (input_stream_opened && stream != null) {
+            try {
+                stream.close();
+            } catch (IOException e) {
+                if (logger.isLoggable(Level.WARNING)) {
+                    logger.warning("could not close the stream: " + e.toString());
+                }
             }
         }
 
@@ -54,7 +68,8 @@ public class PUC {
         String best_lang_code = lang_result.getLanguageCode();
 
         if (logger.isLoggable(Level.FINE)) {
-            logger.fine(String.format("lang<tab>reliable<tab>via: %s\t%s\t%s", best_lang_code, is_reliable, curi.getVia().toCustomString()));
+            // Format: lang <tab> reliable <tab> via
+            logger.fine(String.format("lang\t%s\t%s\t%s", best_lang_code, is_reliable, curi.getVia().toCustomString()));
         }
 
         if ((only_reliable && is_reliable) || !only_reliable) {
@@ -99,18 +114,17 @@ public class PUC {
         return null;
 	}
 
-    public static String getDomainFromAuthority(String authority) {
+    public static String getDomainFromAuthority(String authority, Logger logger) {
         InternetDomainName idn = InternetDomainName.from(authority);
 
         if (idn.isPublicSuffix()) {
             return authority; // Special case: some public suffixes like s3.amazonaws.com can be both a website and a public suffix itself (https://github.com/google/guava/issues/1829)
         }
-        /*
         else if (idn.publicSuffix() == null) {
-            // What should we do?
-            return "";
+            logger.warning("No public suffix present: " + authority);
+
+            return authority;
         }
-        */
 
         String tld = idn.publicSuffix().toString();
         String domain_and_tld = idn.topPrivateDomain().toString();
@@ -151,13 +165,13 @@ public class PUC {
         String authority = PUC.getAuthority(uri, logger);
 
         if (!authority.equals("")) {
-            return PUC.getDomainFromAuthority(authority);
+            return PUC.getDomainFromAuthority(authority, logger);
         }
 
         return "";
     }
 
-    public static String removeTrailingSlashes(String uri) {
+    public static String normalizeURL(String uri) {
         if (uri == null) {
             return uri;
         }
@@ -165,6 +179,8 @@ public class PUC {
         while (uri.endsWith("/")) {
             uri = uri.substring(0, uri.length() - 1);
         }
+
+        uri = uri.replaceAll("\\s", " ");
 
         return uri;
     }

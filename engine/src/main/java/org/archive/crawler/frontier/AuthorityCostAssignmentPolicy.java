@@ -70,7 +70,7 @@ public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
     public int costOf(CrawlURI curi) {
         UURI uri = curi.getUURI();
         UURI via = curi.getVia();
-        String str_uri = PUC.removeTrailingSlashes(uri.toCustomString());
+        String str_uri = PUC.normalizeURL(uri.toCustomString());
         int cost = 50;
         String uri_file = "";
         int uri_resource_idx = str_uri.lastIndexOf("/");
@@ -83,7 +83,7 @@ public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
             cost = 1;
         }
         else if (via != null) {
-            String str_via = PUC.removeTrailingSlashes(via.toCustomString());
+            String str_via = PUC.normalizeURL(via.toCustomString());
 
             if ((str_uri.startsWith("http://") || str_uri.startsWith("https://")) &&
                 (str_via.startsWith("http://") || str_via.startsWith("https://"))) {
@@ -95,7 +95,8 @@ public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
                     cost = 1;
                 }
                 else if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("Different domain: %s vs %s", str_via, str_uri));
+                    // Format: via <tab> uri
+                    logger.fine(String.format("Different domain\t%s\t%s", str_via, str_uri));
                 }
             }
             else if (str_uri.startsWith("dns:") || str_via.startsWith("dns:")) {
@@ -104,14 +105,16 @@ public class AuthorityCostAssignmentPolicy extends CostAssignmentPolicy {
             else {
                 cost = 150;
 
-                logger.log(Level.WARNING, String.format("Unexpected URI scheme: %s -> %s", str_via, str_uri));
+                // Format: via <tab> uri
+                logger.log(Level.WARNING, String.format("Unexpected URI scheme\t%s\t%s", str_via, str_uri));
             }
         }
         else {
             cost = 1;
 
             if (logger.isLoggable(Level.FINE)) {
-                logger.fine(String.format("via is null. uri: (cost: %d) %s", cost, str_uri));
+                // Format: cost <tab> uri
+                logger.fine(String.format("via is null\t%d\t%s", cost, str_uri));
             }
         }
 
