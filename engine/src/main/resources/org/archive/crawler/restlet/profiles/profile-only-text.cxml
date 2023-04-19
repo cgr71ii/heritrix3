@@ -668,7 +668,11 @@ http://example.example/example
  </bean>
  -->
  
- <!-- URI PRECEDENCE POLICY -->
+ <!-- URI PRECEDENCE POLICY
+      You might want to use CostUriAndResetCostPrecedencePolicy in case that you
+      want to use cost for precendence and reset the cost like the default
+      UnitCostAssignmentPolicy
+ -->
  <!--
  <bean id="uriPrecedencePolicy" 
    class="org.archive.crawler.frontier.precedence.CostUriPrecedencePolicy">

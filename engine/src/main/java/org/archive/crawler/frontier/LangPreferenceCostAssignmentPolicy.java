@@ -162,12 +162,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             return 1;
         }
         if (via == null) {
+            cost = 1;
+
             if (getLogger().isLoggable(Level.FINE)) {
                 // Format: cost <tab> uri
                 getLogger().fine(String.format("via is null\t%d\t%s", cost, str_uri));
             }
 
-            return 1;
+            return cost;
         }
 
         String str_via = PUC.normalizeURL(via.toCustomString());
