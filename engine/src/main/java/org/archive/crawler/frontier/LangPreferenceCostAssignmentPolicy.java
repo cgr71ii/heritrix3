@@ -71,6 +71,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     {
+        setPriorizeScoreInsteadOfCoverage(true);
         setApplyOnlyToHTML(true);
         setPriorizeSameDomain(false); // Exploration by default instead of exploitation
         setLangPreference("en|fr");
@@ -78,6 +79,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         setUseCoveredText(false);
         setOnlyReliableDetection(true);
         setLoggerFine(false);
+    }
+
+    public Boolean getPriorizeScoreInsteadOfCoverage() {
+        return (Boolean) kp.get("priorizeScoreInsteadOfCoverage");
+    }
+
+    public void setPriorizeScoreInsteadOfCoverage(Boolean priorize_score_instead_of_coverage) {
+        kp.put("priorizeScoreInsteadOfCoverage", priorize_score_instead_of_coverage);
     }
 
     public Boolean GetApplyOnlyToHTML() {
@@ -209,6 +218,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         String str_via_content = PUC.getContent(curi, getLogger());
         Result lang_result = Cld2.detect(str_via_content, false); // https://github.com/commoncrawl/language-detection-cld2/blob/master/src/main/java/org/commoncrawl/langdetect/cld2/Result.java
         boolean is_reliable = lang_result.isReliable();
+        String best_lang_code = lang_result.getLanguageCode();
 
         if (!(getOnlyReliableDetection() && is_reliable) && getOnlyReliableDetection()) {
             // Detected lang is not relaiable
@@ -229,16 +239,18 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             JSONArray langs = obj.getJSONArray("languages");
             String[] lang_codes = new String[langs.length()];
             String[] text_covered_langs = new String[langs.length()];
+            String[] scores = new String[langs.length()];
 
             for (int i = 0; i < langs.length(); i++) {
                 JSONObject lang_json = langs.getJSONObject(i);
                 String lang_code = lang_json.getString("code");
                 Double text_covered = lang_json.getDouble("text-covered") * 100.0;
+                Double score = lang_json.getDouble("score");
 
                 if (text_covered_perc == null && Arrays.asList(langs_preference).contains(lang_code)) {
                     // Only first detected languaged will be processed
 
-                    if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
+                    if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && ((!getPriorizeScoreInsteadOfCoverage() && i == 0) || (getPriorizeScoreInsteadOfCoverage() && lang_code.equals(best_lang_code))))) {
                         if (use_covered_text) {
                             text_covered_perc = text_covered;
                         }
@@ -250,11 +262,12 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
 
                 lang_codes[i] = lang_code;
                 text_covered_langs[i] = text_covered.toString();
+                scores[i] = score.toString();
             }
 
             if (getLogger().isLoggable(Level.FINE)) {
-                // Format: langs <tab> text_covered <tab> via <tab> uri
-                getLogger().fine(String.format("all detected langs\t%s\t%s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), str_via, str_uri));
+                // Format: langs <tab> text_covered <tab> score <tab> via <tab> uri
+                getLogger().fine(String.format("all detected langs\t%s\t%s\t%s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), String.join(" ", scores), str_via, str_uri));
             }
         } catch (JSONException e) {
             // Format: via <tab> uri
