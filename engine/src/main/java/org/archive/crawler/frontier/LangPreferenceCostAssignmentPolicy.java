@@ -71,22 +71,13 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     {
-        setPriorizeScoreInsteadOfCoverage(true);
         setApplyOnlyToHTML(true);
         setPriorizeSameDomain(false); // Exploration by default instead of exploitation
-        setLangPreference("en|fr");
-        setUseOnlyMainLang(true);
-        setUseCoveredText(false);
+        setLangPreference("en|fr"); // As many languages as you want, but only 3 languages will be detected per document
+        setUseOnlyMainLang(true); // When text setUseCoveredText() == true, only the first language is used
+        setUseCoveredText(false); // Covered text will be used instead of the score
         setOnlyReliableDetection(true);
         setLoggerFine(false);
-    }
-
-    public Boolean getPriorizeScoreInsteadOfCoverage() {
-        return (Boolean) kp.get("priorizeScoreInsteadOfCoverage");
-    }
-
-    public void setPriorizeScoreInsteadOfCoverage(Boolean priorize_score_instead_of_coverage) {
-        kp.put("priorizeScoreInsteadOfCoverage", priorize_score_instead_of_coverage);
     }
 
     public Boolean GetApplyOnlyToHTML() {
@@ -126,7 +117,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
     }
 
     public Boolean getUseOnlyMainLang() {
-        return (Boolean) kp.get("onlyReliableDetection");
+        return (Boolean) kp.get("useOnlyMainLang");
     }
 
     public void setUseOnlyMainLang(Boolean use_only_main_lang) {
@@ -224,8 +215,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             // Detected lang is not relaiable
 
             if (getLogger().isLoggable(Level.FINE)) {
-                // Format: reliable <tab> via <tab> uri
-                getLogger().fine(String.format("reliable\t%s\t%s\t%s", is_reliable, str_via, str_uri));
+                // Format: reliable <tab> best_lang_score <tab> via <tab> uri
+                getLogger().fine(String.format("reliable\t%s\t%s\t%s\t%s", is_reliable, best_lang_code, str_via, str_uri));
             }
 
             return use_covered_text ? 102 : 2;
@@ -236,7 +227,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
         Double text_covered_perc = null;
 
         try {
-            JSONArray langs = obj.getJSONArray("languages");
+            JSONArray langs = obj.getJSONArray("languages"); // This array is sorted by text coverage, not score!
             String[] lang_codes = new String[langs.length()];
             String[] text_covered_langs = new String[langs.length()];
             String[] scores = new String[langs.length()];
@@ -247,16 +238,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                 Double text_covered = lang_json.getDouble("text-covered") * 100.0;
                 Double score = lang_json.getDouble("score");
 
-                if (text_covered_perc == null && Arrays.asList(langs_preference).contains(lang_code)) {
-                    // Only first detected languaged will be processed
+                if (use_covered_text && Arrays.asList(langs_preference).contains(lang_code)) {
+                    if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && i == 0)) {
+                        // Only first detected languaged will be processed if getUseOnlyMainLang()
+                        if (text_covered_perc == null) {
+                            text_covered_perc = 0.0;
+                        }
 
-                    if (!getUseOnlyMainLang() || (getUseOnlyMainLang() && ((!getPriorizeScoreInsteadOfCoverage() && i == 0) || (getPriorizeScoreInsteadOfCoverage() && lang_code.equals(best_lang_code))))) {
-                        if (use_covered_text) {
-                            text_covered_perc = text_covered;
-                        }
-                        else {
-                            text_covered_perc = 100.0; // The specific value MATTERS! The queue rotation will be affected
-                        }
+                        text_covered_perc += text_covered;
                     }
                 }
 
@@ -266,12 +255,17 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             }
 
             if (getLogger().isLoggable(Level.FINE)) {
-                // Format: langs <tab> text_covered <tab> score <tab> via <tab> uri
-                getLogger().fine(String.format("all detected langs\t%s\t%s\t%s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), String.join(" ", scores), str_via, str_uri));
+                // Format: langs <tab> text_covered <tab> score <tab> best_lang_score <tab> via <tab> uri
+                getLogger().fine(String.format("all detected langs\t%s\t%s\t%s\t%s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), String.join(" ", scores), best_lang_code, str_via, str_uri));
             }
         } catch (JSONException e) {
             // Format: via <tab> uri
             getLogger().log(Level.WARNING, String.format("JSON exception (unexpected)\t%s\t%s", str_via, str_uri), e);
+        }
+
+        if (!use_covered_text && text_covered_perc == null && Arrays.asList(langs_preference).contains(best_lang_code)) {
+            // Best language based on score
+            text_covered_perc = 100.0; // The specific value MATTERS! The queue rotation will be affected
         }
 
         if (text_covered_perc == null) {
