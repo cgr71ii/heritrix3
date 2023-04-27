@@ -180,14 +180,14 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
             return 1;
         }
         if (str_via.equals(str_uri) || via_resource.equals("favicon.ico") || uri_resource.equals("favicon.ico")) {
-            return use_covered_text ? 104 : 4;
+            return use_covered_text ? 105 : 5;
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
             (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
             // Format: via <tab> uri
             getLogger().log(Level.WARNING, String.format("Unexpected URI scheme\t%s\t%s", str_via, str_uri));
 
-            return use_covered_text ? 105 : 5;
+            return use_covered_text ? 106 : 6;
         }
         if (GetApplyOnlyToHTML()) {
             CrawlURI via_curi = curi.getFullVia();
@@ -200,7 +200,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                     getLogger().fine(String.format("Content-Type is not HTML\t%s\t%s", str_via, via_curi.getContentType()));
                 }
 
-                return use_covered_text ? 103 : 3;
+                return use_covered_text ? 104 : 4;
             }
         }
 
@@ -219,7 +219,7 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                 getLogger().fine(String.format("reliable\t%s\t%s\t%s\t%s", is_reliable, best_lang_code, str_via, str_uri));
             }
 
-            return use_covered_text ? 102 : 2;
+            return use_covered_text ? 103 : 3;
         }
 
         String detected_langs = lang_result.toJSON();
@@ -270,11 +270,11 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
 
         if (text_covered_perc == null) {
             // Target langs not detected
-            return use_covered_text ? 102 : 2;
+            return use_covered_text ? 103 : 3;
         }
         if (getPriorizeSameDomain() && !uri_domain.equals(via_domain)) {
             // Exploitation of the current web domain
-            return use_covered_text ? 102 : 2; // Not being in the same domain it will assign the same cost that if the target languages were not detected
+            return use_covered_text ? 103 : 3; // Not being in the same domain it will assign the same cost that if the target languages were not detected
         }
         else if (!uri_domain.equals(via_domain)) {
             // Exploration

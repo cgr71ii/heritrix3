@@ -68,8 +68,8 @@ public class PUC {
         String best_lang_code = lang_result.getLanguageCode();
 
         if (logger.isLoggable(Level.FINE)) {
-            // Format: lang <tab> reliable <tab> via
-            logger.fine(String.format("lang\t%s\t%s\t%s", best_lang_code, is_reliable, curi.getVia().toCustomString()));
+            // Format: lang <tab> reliable <tab> via <tab> uri
+            logger.fine(String.format("lang\t%s\t%s\t%s\t%s", best_lang_code, is_reliable, curi.getVia().toCustomString(), curi.getUURI().toCustomString()));
         }
 
         if ((only_reliable && is_reliable) || !only_reliable) {

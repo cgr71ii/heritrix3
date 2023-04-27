@@ -298,14 +298,14 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             return 1;
         }
         if (str_via.equals(str_uri) || via_resource.equals("favicon.ico") || uri_resource.equals("favicon.ico")) {
-            return is_ranking ? 104 : 4;
+            return is_ranking ? 105 : 5;
         }
         if ((!str_uri.startsWith("http://") && !str_uri.startsWith("https://")) ||
             (!str_via.startsWith("http://") && !str_via.startsWith("https://"))) {
             // Format: via <tab> uri
             getLogger().log(Level.WARNING, String.format("Unexpected URI scheme\t%s\t%s", str_via, str_uri));
 
-            return is_ranking ? 105 : 5;
+            return is_ranking ? 106 : 6;
         }
         if (GetApplyOnlyToHTML()) {
             CrawlURI via_curi = curi.getFullVia();
@@ -318,7 +318,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
                     getLogger().fine(String.format("Content-Type is not HTML\t%s\t%s", str_via, via_curi.getContentType()));
                 }
 
-                return is_ranking ? 103 : 3;
+                return is_ranking ? 104 : 4;
             }
         }
 
@@ -355,11 +355,11 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
 
         if (getUseLanguages() && lang_ok.equals("")) {
-            return is_ranking ? 102 : 2;
+            return is_ranking ? 103 : 3;
         }
         if (getPriorizeSameDomain() && !uri_domain.equals(via_domain)) {
             // Exploitation of the current web domain
-            return is_ranking ? 102 : 2;
+            return is_ranking ? 103 : 3;
         }
         else if (!uri_domain.equals(via_domain)) {
             // Exploration
