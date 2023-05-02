@@ -66,4 +66,8 @@ tar -xzf "$HERITRIX_DIST_PKG" -C "$HERITRIX_PREFIX"
 echo "Package path: $HERITRIX_PREFIX"
 echo "Finished!"
 
+echo
+echo "Example to run (bash command):"
+echo "HERITRIX_HOME=\"$HERITRIX_PREFIX/heritrix-3.4.0-SNAPSHOT/\" JAVA_OPTS=\"-Xmx100000M\" $HERITRIX_PREFIX/heritrix-3.4.0-SNAPSHOT/bin/heritrix -a admin:admin -p 8443"
+
 popd > /dev/null

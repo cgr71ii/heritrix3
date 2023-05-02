@@ -57,6 +57,7 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
         setLangPreference(""); // Multiple langs can be provided. Example for english and icelandic: en|is
         setOnlyReliableDetection(true); // You might want to change this value in order to maximize the classified documents
         setCheckAbsenceInsteadOfPresence(false);
+        setSkipCheckIfIsSeed(true);
         setLoggerFine(false);
     }
 
@@ -90,6 +91,14 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
 
     public void setCheckAbsenceInsteadOfPresence(Boolean check_absence_instead_of_presence) {
         kp.put("checkAbsenceInsteadOfPresence", check_absence_instead_of_presence);
+    }
+
+    public Boolean getSkipCheckIfIsSeed() {
+        return (Boolean) kp.get("skipCheckIfIsSeed");
+    }
+
+    public void setSkipCheckIfIsSeed(Boolean skip_check_if_is_seed) {
+        kp.put("skipCheckIfIsSeed", skip_check_if_is_seed);
     }
 
     public Boolean getLoggerFine() {
@@ -140,6 +149,10 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
     }
 
     protected boolean evaluate(CrawlURI uri) {
+        if (getSkipCheckIfIsSeed() && uri.isSeed()) {
+            return false;
+        }
+
         UURI current_uri = uri.getUURI();
         String str_uri = current_uri.toCustomString();
         String lang_preference = getLangPreference();
@@ -182,10 +195,16 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
             (getCheckAbsenceInsteadOfPresence() && !Arrays.asList(langs_preference).contains(best_lang_code))) {
             // Best language based on score
             if(LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.fine("rule matched for " + str_uri);
+                // Format: reliable <tab> best_lang_score <tab> uri
+                LOGGER.fine(String.format("rule ok\t%s\t%s\t%s", is_reliable, best_lang_code, str_uri));
             }
 
             return true;
+        }
+
+        if(LOGGER.isLoggable(Level.FINE)) {
+            // Format: reliable <tab> best_lang_score <tab> uri
+            LOGGER.fine(String.format("rule nok\t%s\t%s\t%s", is_reliable, best_lang_code, str_uri));
         }
 
         return false;
