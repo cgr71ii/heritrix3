@@ -95,6 +95,12 @@
 			<artifactId>jsch</artifactId>
 			<version>0.1.54</version>
 		</dependency>
+		<!-- https://github.com/commoncrawl/language-detection-cld2 -->
+		<dependency>
+			<groupId>org.commoncrawl</groupId>
+			<artifactId>language-detection-cld2</artifactId>
+			<version>0.1-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>

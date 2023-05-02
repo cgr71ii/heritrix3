@@ -259,8 +259,8 @@ public class LangPreferenceCostAssignmentPolicy extends CostAssignmentPolicy imp
                 getLogger().fine(String.format("all detected langs\t%s\t%s\t%s\t%s\t%s\t%s", String.join(" ", lang_codes), String.join(" ", text_covered_langs), String.join(" ", scores), best_lang_code, str_via, str_uri));
             }
         } catch (JSONException e) {
-            // Format: via <tab> uri
-            getLogger().log(Level.WARNING, String.format("JSON exception (unexpected)\t%s\t%s", str_via, str_uri), e);
+            // Format: JSON <tab> via <tab> uri
+            getLogger().log(Level.WARNING, String.format("JSON exception\t%s\t%s\t%s", detected_langs, str_via, str_uri), e);
         }
 
         if (!use_covered_text && text_covered_perc == null && Arrays.asList(langs_preference).contains(best_lang_code)) {
