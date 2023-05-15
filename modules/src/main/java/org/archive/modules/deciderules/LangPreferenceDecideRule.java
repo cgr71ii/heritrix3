@@ -57,7 +57,6 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
         setLangPreference(""); // Multiple langs can be provided. Example for english and icelandic: en|is
         setOnlyReliableDetection(true); // You might want to change this value in order to maximize the classified documents
         setCheckAbsenceInsteadOfPresence(false);
-        setSkipCheckIfIsSeed(true);
         setLoggerFine(false);
     }
 
@@ -91,14 +90,6 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
 
     public void setCheckAbsenceInsteadOfPresence(Boolean check_absence_instead_of_presence) {
         kp.put("checkAbsenceInsteadOfPresence", check_absence_instead_of_presence);
-    }
-
-    public Boolean getSkipCheckIfIsSeed() {
-        return (Boolean) kp.get("skipCheckIfIsSeed");
-    }
-
-    public void setSkipCheckIfIsSeed(Boolean skip_check_if_is_seed) {
-        kp.put("skipCheckIfIsSeed", skip_check_if_is_seed);
     }
 
     public Boolean getLoggerFine() {
@@ -149,24 +140,50 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
     }
 
     protected boolean evaluate(CrawlURI uri) {
-        if (getSkipCheckIfIsSeed() && uri.isSeed()) {
+        UURI current_uri = uri.getUURI();
+        UURI via = uri.getVia();
+        String str_uri = current_uri.toCustomString();
+        String lang_preference = getLangPreference();
+
+        if (via == null) {
+            if (LOGGER.isLoggable(Level.FINE)) {
+                // Format: uri
+                LOGGER.fine(String.format("via is null\t%s", str_uri));
+            }
+
             return false;
         }
 
-        UURI current_uri = uri.getUURI();
-        String str_uri = current_uri.toCustomString();
-        String lang_preference = getLangPreference();
+        CrawlURI via_uri = uri.getFullVia();
+        String str_via = via.toCustomString();
 
         if (lang_preference.equals("") || (!str_uri.startsWith("http://") && !str_uri.startsWith("https://"))) {
             return false;
         }
 
+        if (uri.isSeed()) {
+            if (LOGGER.isLoggable(Level.FINE)) {
+                // Format: via <tab> uri
+                LOGGER.fine(String.format("uri is seed\t%s\t%s", str_via, str_uri));
+            }
+
+            return false;
+        }
+        if (via_uri.isSeed()) {
+            if (LOGGER.isLoggable(Level.FINE)) {
+                // Format: via <tab> uri
+                LOGGER.fine(String.format("via is seed\t%s\t%s", str_via, str_uri));
+            }
+
+            return false;
+        }
+
         if (GetApplyOnlyToHTML()) {
-            if (!uri.getContentType().startsWith("text/html")) {
+            if (!via_uri.getContentType().startsWith("text/html")) {
                 // The content is not HTML
                 if (LOGGER.isLoggable(Level.FINE)) {
                     // Format: via <tab> via content-type
-                    LOGGER.fine(String.format("Content-Type is not HTML\t%s\t%s", str_uri, uri.getContentType()));
+                    LOGGER.fine(String.format("Content-Type is not HTML\t%s\t%s", str_via, via_uri.getContentType()));
                 }
 
                 return false;
@@ -182,8 +199,8 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
             // Detected lang is not relaiable
 
             if (LOGGER.isLoggable(Level.FINE)) {
-                // Format: reliable <tab> best_lang_score <tab> uri
-                LOGGER.fine(String.format("reliable\t%s\t%s\t%s", is_reliable, best_lang_code, str_uri));
+                // Format: reliable <tab> best_lang_score <tab> via <tab> uri
+                LOGGER.fine(String.format("reliable\t%s\t%s\t%s\t%s", is_reliable, best_lang_code, str_via, str_uri));
             }
 
             return false;
@@ -195,16 +212,16 @@ public class LangPreferenceDecideRule extends PredicatedDecideRule {
             (getCheckAbsenceInsteadOfPresence() && !Arrays.asList(langs_preference).contains(best_lang_code))) {
             // Best language based on score
             if(LOGGER.isLoggable(Level.FINE)) {
-                // Format: reliable <tab> best_lang_score <tab> uri
-                LOGGER.fine(String.format("rule ok\t%s\t%s\t%s", is_reliable, best_lang_code, str_uri));
+                // Format: reliable <tab> best_lang_score <tab> via <tab> uri
+                LOGGER.fine(String.format("rule ok\t%s\t%s\t%s\t%s", is_reliable, best_lang_code, str_via, str_uri));
             }
 
             return true;
         }
 
         if(LOGGER.isLoggable(Level.FINE)) {
-            // Format: reliable <tab> best_lang_score <tab> uri
-            LOGGER.fine(String.format("rule nok\t%s\t%s\t%s", is_reliable, best_lang_code, str_uri));
+            // Format: reliable <tab> best_lang_score <tab> via <tab> uri
+            LOGGER.fine(String.format("rule nok\t%s\t%s\t%s\t%s", is_reliable, best_lang_code, str_via, str_uri));
         }
 
         return false;
