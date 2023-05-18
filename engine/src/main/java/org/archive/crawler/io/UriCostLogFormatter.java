@@ -23,7 +23,7 @@ import java.util.logging.LogRecord;
 
 
 /**
- * @author Cristian García-Romero
+ * @author cgr71ii
  */
 public class UriCostLogFormatter extends Formatter {
     public UriCostLogFormatter() {

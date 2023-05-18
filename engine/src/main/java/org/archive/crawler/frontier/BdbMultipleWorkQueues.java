@@ -347,6 +347,14 @@ public class BdbMultipleWorkQueues {
             LOGGER.log(Level.SEVERE,"URI enqueueing failed; "+status+ " "+curi, new RuntimeException());
         }
     }
+
+    public Database getPendingUrisDB() {
+        return pendingUrisDB;
+    }
+
+    public EntryBinding<CrawlURI> getBinding() {
+        return crawlUriBinding;
+    }
     
     private long entryCount = 0;
     private long entrySizeSum = 0;

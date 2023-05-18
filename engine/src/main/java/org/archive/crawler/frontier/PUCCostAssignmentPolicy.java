@@ -37,7 +37,7 @@ import org.json.JSONException;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
+import java.util.Arrays;
 import java.util.Base64;
 
 /**
@@ -77,6 +77,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         setApplyOnlyToHTML(true);
         setLangPreference1("");
         setLangPreference2("");
+        setLangPreferenceDetector("");
         setOnlyReliableDetection(true);
         setUseLanguages(true);
         setPriorizeSameDomain(false); // Exploration by default instead of exploitation
@@ -152,6 +153,14 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
 
     public void setLangPreference2(String lang_preference) {
         kp.put("langPreference2", lang_preference);
+    }
+
+    public String getLangPreferenceDetector() {
+        return (String) kp.get("langPreferenceDetector");
+    }
+
+    public void setLangPreferenceDetector(String lang_preference_detector) {
+        kp.put("langPreferenceDetector", lang_preference_detector);
     }
 
     public String getMetricServerUrl() {
@@ -323,6 +332,7 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
         }
 
         String lang_ok = "";
+        String langs_detector = getLangPreferenceDetector();
         String detected_lang = "";
         String uri_domain = PUC.getDomain(str_uri, getLogger());
         String via_domain = PUC.getDomain(str_via, getLogger());
@@ -332,6 +342,10 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             String lang1 = getLangPreference1();
             String lang2 = getLangPreference2();
             String[] lang_result;
+
+            if (langs_detector.equals("")) {
+                langs_detector = lang1 + "|" + lang2;
+            }
 
             lang_result = PUC.isLangOk(curi, lang1, lang2, getOnlyReliableDetection(), getLogger());
             lang_ok = lang_result[0];
@@ -354,8 +368,25 @@ public class PUCCostAssignmentPolicy extends CostAssignmentPolicy implements Has
             }
         }
 
-        if (getUseLanguages() && lang_ok.equals("")) {
-            return is_ranking ? 103 : 3;
+        String[] langs_preference = langs_detector.split("[|]");
+
+        if (getUseLanguages()) {
+            Boolean fail = false;
+
+            if (lang_ok.equals("")) {
+                fail = true;
+            }
+            if (langs_preference.length != 0 && !Arrays.asList(langs_preference).contains(lang_ok)) {
+                if (getLogger().isLoggable(Level.FINE)) {
+                    getLogger().fine(String.format("bad preference lang\t%s\t%s\t%s", str_via, str_uri, detected_lang));
+                }
+
+                fail = true;
+            }
+
+            if (fail) {
+                return is_ranking ? 103 : 3;
+            }
         }
         if (getPriorizeSameDomain() && !uri_domain.equals(via_domain)) {
             // Exploitation of the current web domain
