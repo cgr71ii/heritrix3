@@ -181,7 +181,16 @@ public abstract class WorkQueue implements Frontier.FrontierGroup,
             if(peekItem != null) {
                 lastPeeked = peekItem.toString();
             }
+            //logger.warning("PEEK: update");
         }
+        /*
+        if (peekItem == null) {
+            logger.warning("PEEK: is null : " + count);
+        }
+        else {
+            logger.warning("PEEK: " + peekItem.toString() + " : " + count);
+        }
+        */
         return peekItem;
     }
 
@@ -199,6 +208,21 @@ public abstract class WorkQueue implements Frontier.FrontierGroup,
             throw new RuntimeException(e);
         }
         unpeek(expected);
+        count--;
+        lastDequeueTime = System.currentTimeMillis();
+    }
+
+    protected synchronized void dequeueSpecificURI(final WorkQueueFrontier frontier, CrawlURI uri) {
+        try {
+            deleteItem(frontier, uri);
+        } catch (IOException e) {
+            //FIXME better exception handling
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+        if (peekItem == uri) {
+            unpeek(uri);
+        }
         count--;
         lastDequeueTime = System.currentTimeMillis();
     }

@@ -70,4 +70,8 @@ echo
 echo "Example to run (bash command):"
 echo "HERITRIX_HOME=\"$HERITRIX_PREFIX/heritrix-3.4.0-SNAPSHOT/\" JAVA_OPTS=\"-Xmx100000M\" $HERITRIX_PREFIX/heritrix-3.4.0-SNAPSHOT/bin/heritrix -a admin:admin -p 8443"
 
+echo
+echo "Example to run with CLD2 full (bash command; beware that libcld2_full.so path might not be correct):"
+echo "LD_PRELOAD=\"$CONDA_PREFIX/lib/libcld2_full.so\" HERITRIX_HOME=\"$HERITRIX_PREFIX/heritrix-3.4.0-SNAPSHOT/\" JAVA_OPTS=\"-Xmx100000M\" $HERITRIX_PREFIX/heritrix-3.4.0-SNAPSHOT/bin/heritrix -a admin:admin -p 8443"
+
 popd > /dev/null

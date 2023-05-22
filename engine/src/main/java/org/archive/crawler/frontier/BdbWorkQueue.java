@@ -132,6 +132,15 @@ implements Serializable {
                     + " items using key "
                     + getPrefixClassKey(key.getData()));
         }
+
+        /*
+        if (curi != null) {
+            LOGGER.warning("BWQ: peekItem: " + curi.toString());
+        }
+        else {
+            LOGGER.warning("BWQ: peekItem: is null");
+        }
+        */
  
         return curi;
     }
@@ -150,6 +159,7 @@ implements Serializable {
         } catch (DatabaseException e) {
             throw new IOException(e);
         }
+        //LOGGER.warning("BWQ: insertItem: " + curi.toString() + " : " + overwriteIfPresent);
     }
     
     /**

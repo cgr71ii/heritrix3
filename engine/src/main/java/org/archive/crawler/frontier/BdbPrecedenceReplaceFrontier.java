@@ -23,7 +23,9 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.collections.Closure;
 import org.archive.modules.CrawlURI;
+import org.archive.net.UURI;
 
 import com.sleepycat.bind.EntryBinding;
 import com.sleepycat.je.Cursor;
@@ -53,6 +55,21 @@ public class BdbPrecedenceReplaceFrontier extends BdbFrontier {
 
     public BdbPrecedenceReplaceFrontier() {
         super();
+    }
+
+    public Boolean getLoggerFine() {
+        return (Boolean) kp.get("loggerFine");
+    }
+
+    public void setLoggerFine(Boolean logger_fine) {
+        kp.put("loggerFine", logger_fine);
+
+        if (getLoggerFine()) {
+            logger.setLevel(Level.FINE);
+        }
+        else {
+            logger.setLevel(Level.INFO);
+        }
     }
 
     @Override
@@ -85,6 +102,24 @@ public class BdbPrecedenceReplaceFrontier extends BdbFrontier {
                 forAllPendingDo(logAllUris);
                 */
 
+                CrawlURI peekUri = wq.peek(this);
+
+                if (peekUri != null) {
+                    // Is the current CURI being already processed or will be really soon?
+                    UURI via = peekUri.getVia();
+                    CrawlURI via_curi = null;
+
+                    if (via != null) {
+                        via_curi = peekUri.getFullVia();
+                    }
+
+                    if (peekUri.getCanonicalString().equals(curiURI) || (via_curi != null && via_curi.getCanonicalString().equals(curiURI))) {
+                        if (logger.isLoggable(Level.FINE)) {
+                            logger.fine("URI being processed right now or is next: " + curiURI);
+                        }
+                        return;
+                    }
+                }
                 if (seenURI != null && !forceDownload) {
                     // URI has been seen before
                     int currentPrecedence = curi.getPrecedence();
@@ -129,7 +164,9 @@ public class BdbPrecedenceReplaceFrontier extends BdbFrontier {
                             }
 
                             doesExist.setHolderKey(key);
-                            pendingUris.delete(doesExist);
+                            //pendingUris.delete(doesExist);
+                            wq.dequeueSpecificURI(this, doesExist);
+                            decrementQueuedCount(1);
 
                             if (logger.isLoggable(Level.FINE)) {
                                 logger.fine("URI updated: " + curiURI);
