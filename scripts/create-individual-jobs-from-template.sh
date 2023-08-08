@@ -61,7 +61,7 @@ for seed in $(cat "$SEEDS_FILE"); do
     continue
   fi
 
-  cp "$TEMPLATE_CONF" "$output"
+  cp "$TEMPLATE_CONF" "$output/crawler-beans.cxml"
 
   sed -E -i "s/^${uri_template_sed}(\r?)$/$seed_sed\1/" "$output_conf_file"
 
