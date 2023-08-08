@@ -30,7 +30,6 @@ if [[ "$check_template_uri_is_present" != "1" ]]; then
   exit 1
 fi
 
-template_filename=$(basename "$TEMPLATE_CONF")
 heritrix_curl_out="${JOBS_OUTPUT_PREFIX}_heritrix_curl_out.log" # Can be changed to /dev/null or /dev/stdout
 
 for seed in $(cat "$SEEDS_FILE"); do
@@ -49,7 +48,7 @@ for seed in $(cat "$SEEDS_FILE"); do
   seed_sed=$(echo "$seed" | sed 's/\//\\\//g')
   seed_output=$(echo "$seed" | tr '/' 'S' | tr '>' 'G' | tr '<' 'L' | tr '|' 'P' | tr '&' 'A' | tr ':' 'D') # no special characters in filenames
   output="${JOBS_OUTPUT_PREFIX}_seed_${seed_output}"
-  output_conf_file="$output/$template_filename"
+  output_conf_file="$output/crawler-beans.cxml"
 
   echo "Seed output: $seed -> $output"
 
@@ -61,7 +60,7 @@ for seed in $(cat "$SEEDS_FILE"); do
     continue
   fi
 
-  cp "$TEMPLATE_CONF" "$output/crawler-beans.cxml"
+  cp "$TEMPLATE_CONF" "$output_conf_file"
 
   sed -E -i "s/^${uri_template_sed}(\r?)$/$seed_sed\1/" "$output_conf_file"
 
