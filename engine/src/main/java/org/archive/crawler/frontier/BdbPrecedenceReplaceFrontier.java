@@ -78,7 +78,7 @@ public class BdbPrecedenceReplaceFrontier extends BdbFrontier {
         // https://github.com/internetarchive/heritrix3/wiki/Frontier : "There is only one Frontier per crawl job."
 
         String[] reportsPathElements = getCrawlController().getStatisticsTracker().getReportsDir().getFile().list();
-        String jobName = reportsPathElements.get(reportsPathElements.size() - 3);
+        String jobName = reportsPathElements[reportsPathElements.length - 3];
 
         logger.info("Job terminated: " + jobName);
 
