@@ -79,6 +79,8 @@ public class BdbPrecedenceReplaceFrontier extends BdbFrontier {
         // Method called when the current job is finished
         // https://github.com/internetarchive/heritrix3/wiki/Frontier : "There is only one Frontier per crawl job."
 
+        getCrawlController().getStatisticsTracker().getSnapshot();
+
         File reportsPath = getCrawlController().getStatisticsTracker().getReportsDir().getFile();
         String[] reportsPathElements = reportsPath.list();
         String jobName = reportsPath.toString();
