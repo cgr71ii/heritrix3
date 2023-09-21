@@ -18,6 +18,8 @@
  */
 package org.archive.crawler.frontier;
 
+import java.io.File;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -77,8 +79,13 @@ public class BdbPrecedenceReplaceFrontier extends BdbFrontier {
         // Method called when the current job is finished
         // https://github.com/internetarchive/heritrix3/wiki/Frontier : "There is only one Frontier per crawl job."
 
-        String[] reportsPathElements = getCrawlController().getStatisticsTracker().getReportsDir().getFile().list();
-        String jobName = reportsPathElements[reportsPathElements.length - 3];
+        File reportsPath = getCrawlController().getStatisticsTracker().getReportsDir().getFile();
+        String[] reportsPathElements = reportsPath.list();
+        String jobName = reportsPath.toString();
+
+        if (reportsPathElements.length >= 3) {
+            jobName = reportsPathElements[reportsPathElements.length - 3];
+        }
 
         logger.info("Job terminated: " + jobName);
 
