@@ -1,8 +1,8 @@
 #!/bin/bash
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-PREFIX="$1" # e.g. /path/to/heritrix/jobs (pattern: $PREFIX/*/latest)
+PREFIX="$1" # e.g. /path/to/heritrix/jobs or '/path/to/heritrix/jobs/??-??' (pattern: $PREFIX/*/latest)
 
 if [[ "$PREFIX" != /* ]]; then
   >&2 echo "ERROR: provided PREFIX has to be absolute, not relative"
@@ -20,6 +20,6 @@ date
 ls $PREFIX/*/latest/warcs/*.warc.gz* \
   | xargs -I{} -P10 bash -c 'a=$(dirname "{}"); b="$a/documents"; [[ ! -d "$b" ]] && mkdir "$b"; prefix="$b/warc_offset"; '$DIR'/warc2warcdocuments.sh "{}" "$prefix"' &> $PREFIX/warcs.log \
   && echo "ok1 - $(date)" \
-  && echo $PREFIX/*/latest/warcs/documents \
-   | xargs -I{} -P10 bash -c ''$DIR'/get_sorted_list_of_warcs.sh "{}" > {}/../warcs_path.abs_path' \
-   && echo "ok2 - $(date)"
+  && ls -d $PREFIX/*/latest/warcs/documents \
+    | xargs -I{} -P10 bash -c ''$DIR'/get_sorted_list_of_warcs.sh "{}" > {}/../warcs_path.abs_path' \
+    && echo "ok2 - $(date)"
