@@ -18,12 +18,14 @@ TRANSLATION_DIRECTION="$7" # e.g. is2en
 TRANSLATION_SCRIPT="$8" # e.g. bash /home/cgarcia/Documentos/marian-dev/scripts/marian-translate-is2en.sh 4
 BICLEANER_AI_YAML="$9" # e.g. /home/cgarcia/bicleaner-ai-model/en-is/metadata.yaml
 
+echo "Extra args: $LANG1 | $LANG2 | $TRANSLATION_DIRECTION | $TRANSLATION_SCRIPT | $BICLEANER_AI_YAML"
+
 CURRENT_DATE=$(date +%Y%d%m_%s)
 
 if [[ -z "$EXPERIMENT_NAME" ]] || [[ -z "$EXPERIMENT_WARCS_DIR_OR_FILE" ]] || ([[ ! -d "$EXPERIMENT_WARCS_DIR_OR_FILE" ]] && [[ ! -f "$EXPERIMENT_WARCS_DIR_OR_FILE" ]]) || \
    [[ -z "$WARCS_TO_PROCESS" ]] || [[ ! "$WARCS_TO_PROCESS" =~ ^[0-9]+$ ]] || [[ -z "$WORK_DIR" ]] || \
    [[ ! "$LANG1" =~ ^[a-z][a-z]$ ]] || [[ ! "$LANG2" =~ ^[a-z][a-z]$ ]] || [[ -z "$TRANSLATION_SCRIPT" ]] || \
-   [[ ! "$TRANSLATION_DIRECTION" =~ ^[a-z]2[a-z]$ ]] || [[ ! -f "$BICLEANER_AI_YAML" ]]; then
+   [[ ! "$TRANSLATION_DIRECTION" =~ ^[a-z][a-z]2[a-z][a-z]$ ]] || [[ ! -f "$BICLEANER_AI_YAML" ]]; then
   syntax_error
 fi
 

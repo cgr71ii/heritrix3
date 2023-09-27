@@ -7,7 +7,12 @@ lang_pair="$2" # e.g. en-is
 experiment="$3" # e.g. crawling_20230906145856_yes_cld2_no_classifier
 path_to_experiment="$4" # e.g. /home/cgarcia/Documentos/heritrix3/experiments
 experiment_reference="$5" # e.g. crawling_20230909172127_yes_cld2_yes_classifier
-bitextor_extra_args="$6" # See error message for an example
+# Bitextor extra args (see error message for an example or $bitextor_script):
+LANG1="$6"
+LANG2="$7"
+TRANSLATION_DIRECTION="$8"
+TRANSLATION_SCRIPT="$9"
+BICLEANER_AI_YAML="$10"
 
 batch_size="50"
 bitextor_parallel_runs="10"
@@ -22,10 +27,6 @@ if [[ -z "$log_file" ]] || [[ -f "$log_file" ]]; then
 fi
 if [[ ! -f "$bitextor_script" ]]; then
   >&2 echo "ERROR: bitextor script not found: $bitextor_script"
-  exit 1
-fi
-if [[ -z "$bitextor_extra_args" ]]; then
-  >&2 echo "ERROR: bitextor extra args are mandatory: e.g. 'en is is2en \"bash /home/cgarcia/Documentos/marian-dev/scripts/marian-translate-is2en.sh 4\" /home/cgarcia/bicleaner-ai-model/en-is/metadata.yaml'"
   exit 1
 fi
 
@@ -131,7 +132,7 @@ for warcs_path_file in $(ls $path_to_experiment/$experiment/$lang_pair/*/latest/
       mkdir -p "$warcs_dir"
 
       (echo "$jobn - $n - $(date)"
-      $bitextor_loader $bitextor_script "$jobn" "$warcs_path_file" "$n" "$work_dir" $bitextor_extra_args &>> "$warcs_dir/bitextor_run.log"
+      $bitextor_loader $bitextor_script "$jobn" "$warcs_path_file" "$n" "$work_dir" "$LANG1" "$LANG2" "$TRANSLATION_DIRECTION" "$TRANSLATION_SCRIPT" "$BICLEANER_AI_YAML" &>> "$warcs_dir/bitextor_run.log"
       echo "Done - $jobn - $n - $(date)") &
       ids_to_process+=("$n")
     fi
