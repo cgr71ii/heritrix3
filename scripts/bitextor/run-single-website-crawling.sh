@@ -12,7 +12,7 @@ LANG1="$6"
 LANG2="$7"
 TRANSLATION_DIRECTION="$8"
 TRANSLATION_SCRIPT="$9"
-BICLEANER_AI_YAML="$10"
+BICLEANER_AI_YAML="${10}"
 
 batch_size="50"
 bitextor_parallel_runs="10"
