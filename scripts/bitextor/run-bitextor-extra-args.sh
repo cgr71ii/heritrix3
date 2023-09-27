@@ -30,9 +30,13 @@ fi
 WORK="${DIR}/${WORK_DIR}/${EXPERIMENT_NAME}/${WARCS_TO_PROCESS}_warcs_processed"
 
 if [[ -d "$WORK" ]]; then
-  >&2 echo "WORK directory already exists. You might want to remove or move: $WORK ; Sleeping 20 senconds..."
+  NO_FILES=$(ls "$WORK" | wc -l)
 
-  sleep 20
+  if [[ "$NO_FILES" != "0" ]]; then
+    >&2 echo "WORK directory already exists. You might want to remove or move: $WORK ; Sleeping 20 senconds..."
+
+    sleep 20
+  fi
 fi
 
 NO_WARCS=$([[ -d "$EXPERIMENT_WARCS_DIR_OR_FILE" ]] && ls "${EXPERIMENT_WARCS_DIR_OR_FILE}" | grep -a "[.]warc[.]gz$" | wc -l || cat "$EXPERIMENT_WARCS_DIR_OR_FILE" | wc -l)

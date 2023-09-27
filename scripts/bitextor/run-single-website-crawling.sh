@@ -25,14 +25,15 @@ if [[ ! -f "$bitextor_script" ]]; then
   exit 1
 fi
 if [[ -z "$bitextor_extra_args" ]]; then
-  >&2 echo "ERROR: bitextor extra args are mandatory: e.g. 'en is is2en \"bash /home/cgarcia/Documentos/marian-dev/scripts/marian-translate-is2en.sh 4\" \"/home/cgarcia/bicleaner-ai-model/en-is/metadata.yaml\"'"
+  >&2 echo "ERROR: bitextor extra args are mandatory: e.g. 'en is is2en \"bash /home/cgarcia/Documentos/marian-dev/scripts/marian-translate-is2en.sh 4\" /home/cgarcia/bicleaner-ai-model/en-is/metadata.yaml'"
   exit 1
 fi
 
 if [[ "$(command -v srun)" == "" ]]; then
   bitextor_parallel_runs="1" # Can be modified if the provided bitextor script does not need to allocate resources like GPU
-  >&2 echo "WARNING: srun not available: bitextor will not be scheduled: bitextor will be executed with $bitextor_parallel_runs run/s in parallel"
   bitextor_loader=""
+  >&2 echo "WARNING: srun not available: bitextor will not be scheduled: bitextor will be executed with $bitextor_parallel_runs run/s in parallel"
+  sleep 10
 fi
 
 batch_size_mod=$((batch_size*bitextor_parallel_runs))
@@ -81,12 +82,19 @@ for warcs_path_file in $(ls $path_to_experiment/$experiment/$lang_pair/*/latest/
 
   if [[ "$reference" != "0" ]] && [[ ! -z "$website" ]]; then
     # Try to find the appropiate number of documents to process
-    reference_file_wc=$(ls $path_to_experiment/$experiment_reference/$lang_pair/*${website}* | wc -l)
+    reference_file_wc=$(ls $path_to_experiment/$experiment_reference/$lang_pair/*${website}*/latest/warcs/warcs_path.abs_path | wc -l)
 
     if [[ "$reference_file_wc" == "1" ]]; then
-      aux_documents2process=$(ls $path_to_experiment/$experiment_reference/$lang_pair/*${website}*/ | egrep -a "^[0-9]+_warcs_processed$" | sed -E 's/^([0-9]+)_warcs_processed$/\1/' | sort -n | tail -1 | egrep -a "^[0-9]+$")
+      aux_documents2process=$(cat $path_to_experiment/$experiment_reference/$lang_pair/*${website}*/latest/warcs/warcs_path.abs_path | wc -l)
 
       if [[ ! -z "$aux_documents2process" ]]; then
+        if [[ "$aux_documents2process" -le "$batch_size" ]]; then
+          aux_documents2process="$batch_size" # Min. number of documents to process
+        else
+          aux_documents2process_mod=$((aux_documents2process % batch_size))
+          aux_documents2process=$((aux_documents2process - aux_documents2process_mod + batch_size)) # Process exact batches and 1 additional batch to process all the documents
+        fi
+
         echo "Documents to process: $jobn: $documents2process -> $aux_documents2process"
 
         documents2process="$aux_documents2process"
@@ -97,6 +105,8 @@ for warcs_path_file in $(ls $path_to_experiment/$experiment/$lang_pair/*/latest/
       >&2 echo "WARNING: could not FIND appropiate number of documents to process: $reference - $reference_file_wc - $website"
     fi
   fi
+
+  echo "Start: $(date): $warcs_path_file"
 
   for n in $(seq -s ' ' $documents2process -$batch_size $batch_size); do
     l=$((n-batch_size))
@@ -118,6 +128,8 @@ for warcs_path_file in $(ls $path_to_experiment/$experiment/$lang_pair/*/latest/
 
     # Run bitextor?
     if [[ "$l" -lt "$available_documents" ]]; then
+      mkdir -p "$warcs_dir"
+
       (echo "$jobn - $n - $(date)"
       $bitextor_loader $bitextor_script "$jobn" "$warcs_path_file" "$n" "$work_dir" $bitextor_extra_args &>> "$warcs_dir/bitextor_run.log"
       echo "Done - $jobn - $n - $(date)") &
@@ -164,4 +176,6 @@ for warcs_path_file in $(ls $path_to_experiment/$experiment/$lang_pair/*/latest/
       break
     fi
   done
+
+  echo "End: $(date): $warcs_path_file"
 done &>> "$log_file"
