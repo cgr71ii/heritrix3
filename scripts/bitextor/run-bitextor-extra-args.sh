@@ -3,7 +3,7 @@
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 syntax_error() {
-  >&2 echo "Syntax: <experiment_name> <experiment_warcs_dir_or_file> <quantity_warcs_to_process> <work_dir> <lang1> <lang2> <translation_direction> <translation_bash_script_with_options> <bicleaner_ai_metadata_file>"
+  >&2 echo "Syntax: <experiment_name> <experiment_warcs_dir_or_file> <quantity_warcs_to_process> <work_dir> <lang1> <lang2> <translation_direction> <translation_bash_script_with_options> <bicleaner_ai_metadata_file> [<bitextor_force>]"
 
   exit 1
 }
@@ -17,8 +17,10 @@ LANG2="$6" # e.g. is
 TRANSLATION_DIRECTION="$7" # e.g. is2en
 TRANSLATION_SCRIPT="$8" # e.g. bash /home/cgarcia/Documentos/marian-dev/scripts/marian-translate-is2en.sh 4
 BICLEANER_AI_YAML="$9" # e.g. /home/cgarcia/bicleaner-ai-model/en-is/metadata.yaml
+BITEXTOR_FORCE="${10}" # e.g. 'parallelJobs='\''{"translate": 1, "bicleaner": 1}'\'''
 
 echo "Extra args: $LANG1 | $LANG2 | $TRANSLATION_DIRECTION | $TRANSLATION_SCRIPT | $BICLEANER_AI_YAML"
+echo "Bitextor force: $BITEXTOR_FORCE"
 
 CURRENT_DATE=$(date +%Y%d%m_%s)
 
@@ -89,7 +91,7 @@ bitextor --notemp -j 8 \
                 documentAligner="externalMT" alignerCmd="$TRANSLATION_SCRIPT" translationDirection="$TRANSLATION_DIRECTION" sentenceAligner="bleualign" \
                 bifixer=True bicleaner=True bicleanerFlavour="ai" bicleanerModel="$BICLEANER_AI_YAML" \
                 deferred=True tmx=True boilerplateCleaning=False deduped=True paragraphIdentification=True additionalMetadata=True bicleanerExtraArgs="--disable_minimal_length" \
-                bicleanerThreshold=0.5 granularity='["sentences", "documents"]' \
+                bicleanerThreshold=0.5 granularity='["sentences", "documents"]' parallelJobs='{"translate": 1, "bicleaner": 1}' $BITEXTOR_FORCE \
             &> "$REPORT_FILE"
 
 echo "Done! Exit status: $?"

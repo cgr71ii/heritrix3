@@ -13,6 +13,7 @@ LANG2="$7"
 TRANSLATION_DIRECTION="$8"
 TRANSLATION_SCRIPT="$9"
 BICLEANER_AI_YAML="${10}"
+BITEXTOR_FORCE="${11}"
 
 batch_size="50"
 bitextor_parallel_runs="10"
@@ -132,7 +133,7 @@ for warcs_path_file in $(ls $path_to_experiment/$experiment/$lang_pair/*/latest/
       mkdir -p "$warcs_dir"
 
       (echo "$jobn - $n - $(date)"
-      $bitextor_loader $bitextor_script "$jobn" "$warcs_path_file" "$n" "$work_dir" "$LANG1" "$LANG2" "$TRANSLATION_DIRECTION" "$TRANSLATION_SCRIPT" "$BICLEANER_AI_YAML" &>> "$warcs_dir/bitextor_run.log"
+      $bitextor_loader $bitextor_script "$jobn" "$warcs_path_file" "$n" "$work_dir" "$LANG1" "$LANG2" "$TRANSLATION_DIRECTION" "$TRANSLATION_SCRIPT" "$BICLEANER_AI_YAML" "$BITEXTOR_FORCE" &>> "$warcs_dir/bitextor_run.log"
       echo "Done - $jobn - $n - $(date)") &
       ids_to_process+=("$n")
     fi

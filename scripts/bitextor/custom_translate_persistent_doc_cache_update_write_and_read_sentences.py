@@ -42,9 +42,12 @@ for idx, l in enumerate(tmp_file_fd, 1):
   else: # "0"
     translation = translations[current_translation].rstrip("\r\n ")
 
-    current_translation += 1
+    try:
+      storage.store(translation_or_hash, translation)
+    except Exception as e:
+      sys.stderr.write(f"WARNING: could not write sentence #{idx} with hash {translation_or_hash}\n")
 
-    storage.store(translation_or_hash, translation)
+    current_translation += 1
 
     if debug:
       sys.stderr.write(f"Line #{idx} (idx: {line_idx}): translated and stored\n")
