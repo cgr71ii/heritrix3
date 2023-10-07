@@ -25,10 +25,10 @@ with gzip.open(sentgz_file, "rt") as fd:
     next(fd) # skip header
 
     for l in fd:
-        l = l.rstrip("\r\n").split('\t')
+        l = l.rstrip("\r\n ").split('\t')
         urls_pair = f"{l[0]}\t{l[1]}"
-        src = l[2].rstrip("\r\n")
-        trg = l[3].rstrip("\r\n")
+        src = l[2].rstrip("\r\n ")
+        trg = l[3].rstrip("\r\n ")
 
         if urls_pair not in sentences_tokens:
             sentences_tokens[urls_pair] = 0
@@ -40,13 +40,19 @@ printed_docs = 0
 
 # Filter documents
 with gzip.open(documentsgz_file, "rt") as fd:
-    sys.stdout.write(next(fd))
+    header = next(fd).rstrip("\r\n ").split('\t')
+
+    header.append("sentences_tokens")
+    header.append("documents_tokens")
+    header.append("percentage")
+
+    print('\t'.join(header))
 
     for idx, l in enumerate(fd, 1):
-        l = l.split('\t') # We do not apply l.rstrip() because we want to print the output as it was received
+        l = l.rstrip("\r\n ").split('\t')
         urls_pair = f"{l[0]}\t{l[1]}"
-        src = base64.b64decode(l[2].rstrip("\r\n").encode()).decode("utf-8", errors="backslashreplace")
-        trg = base64.b64decode(l[3].rstrip("\r\n").encode()).decode("utf-8", errors="backslashreplace")
+        src = base64.b64decode(l[2].rstrip("\r\n ").encode()).decode("utf-8", errors="backslashreplace").rstrip("\r\n ")
+        trg = base64.b64decode(l[3].rstrip("\r\n ").encode()).decode("utf-8", errors="backslashreplace").rstrip("\r\n ")
 
         if urls_pair in documents_tokens:
             sys.stderr.write(f"WARNING: same URLs pair found more than once? Doc #{idx}: {urls_pair} {documents_tokens}\n")
@@ -62,9 +68,14 @@ with gzip.open(documentsgz_file, "rt") as fd:
                                  f" vs {sentences_tokens[urls_pair]}\n")
 
             percentage = min(sentences_tokens[urls_pair] / documents_tokens[urls_pair], 1.0)
+            normalized_percentage = min(percentage, 1.0)
 
-            if percentage >= min_percentage:
-                sys.stdout.write('\t'.join(l))
+            if normalized_percentage >= min_percentage:
+                l.append(str(sentences_tokens[urls_pair]))
+                l.append(str(documents_tokens[urls_pair]))
+                l.append(f"{percentage:.2f}")
+
+                print('\t'.join(l))
 
                 printed_docs += 1
 
