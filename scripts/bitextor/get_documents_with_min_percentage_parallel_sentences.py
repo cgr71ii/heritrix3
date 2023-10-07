@@ -29,7 +29,11 @@ with gzip.open(sentgz_file, "rt") as fd:
         urls_pair = f"{l[0]}\t{l[1]}"
         src = l[2].rstrip("\r\n")
         trg = l[3].rstrip("\r\n")
-        sentences_tokens[urls_pair] = len(tokenize(src)) + len(tokenize(trg)) # Cannot be 0
+
+        if urls_pair not in sentences_tokens:
+            sentences_tokens[urls_pair] = 0
+
+        sentences_tokens[urls_pair] += len(tokenize(src)) + len(tokenize(trg)) # Cannot be 0
 
 total_docs = 0
 printed_docs = 0
