@@ -84,4 +84,4 @@ with gzip.open(documentsgz_file, "rt") as fd:
 if set(sentences_tokens.keys()) != set(documents_tokens.keys()):
     sys.stderr.write(f"WARNING: unexpected different URLs found in the provided files\n")
 
-sys.stderr.write(f"INFO: {printed_docs} documents were printed of {total_docs} ({printed_docs * 100.0 / total_docs:.2f}%)\n")
+sys.stderr.write(f"INFO: {printed_docs} documents were printed of {total_docs} ({printed_docs * 100.0 / max(total_docs, 1):.2f}%)\n")
