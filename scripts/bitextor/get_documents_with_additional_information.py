@@ -8,8 +8,15 @@ import base64
 
 sentgz_file = sys.argv[1] # "permanent" directory
 documentsgz_file = sys.argv[2] # "permanent" directory
-urlgz_files_glob = sys.argv[3] # "data" directory
-sentencesgz_files_glob = sys.argv[4] # "data" directory
+# Files necessary to count the sentences of the documents found in sent.gz:
+## This might be replaced with execution of the same sentence spliter applied in bitextor
+urlgz_files_src_lang_glob = sys.argv[3] # "data" directory
+urlgz_files_trg_lang_glob = sys.argv[4] # "data" directory
+sentencesgz_files_src_lang_glob = sys.argv[5] # "data" directory
+sentencesgz_files_trg_lang_glob = sys.argv[6] # "data" directory
+
+if len(sys.argv) != 7:
+    raise Exception(f"7 args were expected, got {len(sys.argv)}")
 
 if not sentgz_file.endswith(".sent.gz") or not documentsgz_file.endswith(".documents.gz"):
     raise Exception("Unexpected input files")
@@ -28,30 +35,41 @@ def check_it_was_last_line_in_fd(fd):
 sentences_tokens = {}
 sentences_count = {}
 documents_tokens = {}
-documents_sentences_count_single_url = {}
+documents_sentences_count_single_url = {"src": {}, "trg": {}}
 documents_sentences_count = {}
 
 # Read url.gz and sentences.gz
-urlgz_files = glob.glob(urlgz_files_glob)
-sentencesgz_files = glob.glob(sentencesgz_files_glob)
+urlgz_files_src = glob.glob(urlgz_files_src_lang_glob)
+urlgz_files_trg = glob.glob(urlgz_files_trg_lang_glob)
+sentencesgz_files_src = glob.glob(sentencesgz_files_src_lang_glob)
+sentencesgz_files_trg = glob.glob(sentencesgz_files_trg_lang_glob)
 
-if len(urlgz_files) != len(sentencesgz_files):
-    raise Exception(f"Different length in url.gz and sentences.gz files: {len(urlgz_files)} vs {len(sentencesgz_files)}")
+if len(urlgz_files_src) != len(sentencesgz_files_src):
+    raise Exception(f"Different length in src url.gz and sentences.gz files: {len(urlgz_files_src)} vs {len(sentencesgz_files_src)}")
+if len(urlgz_files_trg) != len(sentencesgz_files_trg):
+    raise Exception(f"Different length in trg url.gz and sentences.gz files: {len(urlgz_files_trg)} vs {len(sentencesgz_files_trg)}")
 
 # Read url.gz and sentences.gz
-for file_idx, (urlgz_file, sentencesgz_file) in enumerate(zip(urlgz_files, sentencesgz_files), 1):
-    with gzip.open(urlgz_file, "rt") as fd_urlgz, gzip.open(sentencesgz_file, "rt") as fd_sentencesgz:
-        for doc_idx, (l_urlgz, l_sentencesgz) in enumerate(zip(fd_urlgz, fd_sentencesgz), 1):
-            l_urlgz = l_urlgz.rstrip("\r\n ")
-            l_sentencesgz = base64.b64decode(l_sentencesgz.rstrip("\r\n ").encode()).decode("utf-8", errors="backslashreplace").rstrip("\r\n ")
+for urlgz_files, sentencesgz_files, direction in ((urlgz_files_src, sentencesgz_files_src, "src"), (urlgz_files_trg, sentencesgz_files_trg, "trg")):
+    for file_idx, (urlgz_file, sentencesgz_file) in enumerate(zip(urlgz_files, sentencesgz_files), 1):
+        urlgz_file_prefix = '/'.join(urlgz_file.split('/')[:-1])
+        sentencesgz_file_prefix = '/'.join(sentencesgz_file.split('/')[:-1])
 
-            if l_urlgz in documents_sentences_count_single_url:
-                sys.stderr.write(f"WARNING: URL #{doc_idx} seen more than once in {urlgz_file}: {l_urlgz}\n")
+        if urlgz_file_prefix != sentencesgz_file_prefix:
+            sys.stderr.write(f"WARNING: sent.gz and sentences.gz should have the same prefix path: {urlgz_file_prefix} vs {sentencesgz_file_prefix}\n")
 
-            documents_sentences_count_single_url[l_urlgz] = l_sentencesgz.count('\n') + 1
+        with gzip.open(urlgz_file, "rt") as fd_urlgz, gzip.open(sentencesgz_file, "rt") as fd_sentencesgz:
+            for doc_idx, (l_urlgz, l_sentencesgz) in enumerate(zip(fd_urlgz, fd_sentencesgz), 1):
+                l_urlgz = l_urlgz.rstrip("\r\n ")
+                l_sentencesgz = base64.b64decode(l_sentencesgz.rstrip("\r\n ").encode()).decode("utf-8", errors="backslashreplace").rstrip("\r\n ")
 
-        if not check_it_was_last_line_in_fd(fd_urlgz) or not check_it_was_last_line_in_fd(fd_sentencesgz):
-            raise Exception(f"Reading url.gz and sentences.gz #{file_idx}: {urlgz_file} and {sentencesgz_file}: different length")
+                if l_urlgz in documents_sentences_count_single_url[direction]:
+                    sys.stderr.write(f"WARNING: URL #{doc_idx} seen more than once in {urlgz_file} ({direction}): {l_urlgz}\n")
+
+                documents_sentences_count_single_url[direction][l_urlgz] = l_sentencesgz.count('\n') + 1
+
+            if not check_it_was_last_line_in_fd(fd_urlgz) or not check_it_was_last_line_in_fd(fd_sentencesgz):
+                raise Exception(f"Reading url.gz and sentences.gz #{file_idx}: {urlgz_file} and {sentencesgz_file}: different length")
 
 index_to_check_if_bifixer_joined_sentences = None
 
@@ -84,8 +102,8 @@ with gzip.open(sentgz_file, "rt") as fd:
         sentences_tokens[urls_pair]["trg"] += len(tokenize(trg))
 
         if index_to_check_if_bifixer_joined_sentences:
-            sentences_count[urls_pair]["src"] += l[index_to_check_if_bifixer_joined_sentences["src"]].count('+') - 1
-            sentences_count[urls_pair]["trg"] += l[index_to_check_if_bifixer_joined_sentences["trg"]].count('+') - 1
+            sentences_count[urls_pair]["src"] += l[index_to_check_if_bifixer_joined_sentences["src"]].count('+') + 1
+            sentences_count[urls_pair]["trg"] += l[index_to_check_if_bifixer_joined_sentences["trg"]].count('+') + 1
         else:
             sentences_count[urls_pair]["src"] += 1
             sentences_count[urls_pair]["trg"] += 1
@@ -131,16 +149,17 @@ with gzip.open(documentsgz_file, "rt") as fd:
 
         documents_sentences_count[urls_pair] = {"src": 0, "trg": 0}
 
-        if src_url not in documents_sentences_count_single_url:
-            sys.srderr.write(f"WARNING: src URL not found in url.gz: {src_url}\n")
+        if src_url not in documents_sentences_count_single_url["src"]:
+            sys.stderr.write(f"WARNING: src URL not found in url.gz: {src_url}\n")
         else:
-            documents_sentences_count[urls_pair]["src"] = documents_sentences_count_single_url[src_url]
+            documents_sentences_count[urls_pair]["src"] = documents_sentences_count_single_url["src"][src_url]
 
-        if trg_url not in documents_sentences_count_single_url:
-            sys.srderr.write(f"WARNING: trg URL not found in url.gz: {trg_url}\n")
+        if trg_url not in documents_sentences_count_single_url["trg"]:
+            sys.stderr.write(f"WARNING: trg URL not found in url.gz: {trg_url}\n")
         else:
-            documents_sentences_count[urls_pair]["trg"] = documents_sentences_count_single_url[trg_url]
+            documents_sentences_count[urls_pair]["trg"] = documents_sentences_count_single_url["trg"][trg_url]
 
+        documents_tokens[urls_pair] = {"src": 0, "trg": 0}
         documents_tokens[urls_pair]["src"] = len(tokenize(src))
         documents_tokens[urls_pair]["trg"] = len(tokenize(trg))
 
@@ -156,11 +175,22 @@ with gzip.open(documentsgz_file, "rt") as fd:
                 sys.stderr.write("WARNING: more tokens in sent.gz than in documents.gz: this is expected "
                                  f"if bifixer was enabled: doc #{idx}: {total_documents_tokens} "
                                  f" vs {total_sentences_tokens}\n")
+            if total_documents_sentences < total_sentences_sentences:
+                sys.stderr.write("ERROR: more sentences in sent.gz than in sentences.gz files: "
+                                 f"this is unexpected: doc #{idx}: {total_documents_tokens} "
+                                 f" vs {total_sentences_sentences}\n")
 
-            percentage_tokens = total_sentences_tokens / total_documents_tokens
+            percentage_tokens = total_sentences_tokens / total_documents_tokens if total_documents_tokens > 0 else -1.0
             normalized_percentage_tokens = min(percentage_tokens, 1.0)
-            percentage_sentences = total_sentences_sentences / total_documents_sentences
+            percentage_sentences = total_sentences_sentences / total_documents_sentences if total_documents_sentences > 0 else -1.0
             normalized_percentage_sentences = min(percentage_sentences, 1.0)
+
+            if normalized_percentage_tokens < 0.0:
+                sys.stderr.write(f"WARNING: tokens percentage is negative: doc #{idx}: {normalized_percentage_tokens}: did you provide "
+                                 "the arguments correctly?\n")
+            if normalized_percentage_sentences < 0.0:
+                sys.stderr.write(f"WARNING: sentences percentage is negative: doc #{idx}: {normalized_percentage_sentences}: did you provide "
+                                 "the arguments correctly?\n")
 
             # Tokens
             l.append(str(sentences_tokens[urls_pair]["src"]))
