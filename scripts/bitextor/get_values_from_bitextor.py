@@ -48,7 +48,7 @@ print(f"website\tprocessed_warcs\t{header1}\t{header2}") # Header
 BITEXTOR_SCRIPT_FILTER_CMD_ENVVAR = "cat"
 
 if "BITEXTOR_SCRIPT_FILTER_CMD_ENVVAR" in os.environ:
-  BITEXTOR_SCRIPT_FILTER_CMD_ENVVAR = os.environ("BITEXTOR_SCRIPT_FILTER_CMD_ENVVAR")
+  BITEXTOR_SCRIPT_FILTER_CMD_ENVVAR = os.environ["BITEXTOR_SCRIPT_FILTER_CMD_ENVVAR"]
 
   sys.stderr.write(f"INFO: custom filtering cmd provided: {BITEXTOR_SCRIPT_FILTER_CMD_ENVVAR}\n")
 
