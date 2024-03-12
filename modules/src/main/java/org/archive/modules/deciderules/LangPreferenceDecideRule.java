@@ -41,7 +41,7 @@ import org.commoncrawl.langdetect.cld2.Result;
 /**
  * Applies its decision based on the detected language by CLD2
  * 
- * @author Cristian García-Romero
+ * @author cgr71ii
  */
 public class LangPreferenceDecideRule extends PredicatedDecideRule {
     private static final long serialVersionUID = 1L;
